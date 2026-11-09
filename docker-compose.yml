@@ -1,0 +1,65 @@
+# Sift: docker compose up, then open http://localhost:8000/docs
+# Memory limits keep the whole stack around 3 GB on a shared VPS.
+services:
+  api:
+    build: .
+    image: ghcr.io/hungnguyen1607/sift:latest
+    ports: ["${SIFT_PORT:-8000}:8000"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      SIFT_DATABASE_URL: postgresql://sift:sift@postgres:5432/sift
+      SIFT_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 1g, cpus: "2" } } }
+
+  # Background index writer: embeds full passages and writes them to Postgres.
+  worker:
+    image: ghcr.io/hungnguyen1607/sift:latest
+    command: ["python", "-m", "sift.worker"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      SIFT_DATABASE_URL: postgresql://sift:sift@postgres:5432/sift
+      SIFT_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      api: { condition: service_started }
+    healthcheck: { disable: true }
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 768m, cpus: "1" } } }
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: sift
+      POSTGRES_PASSWORD: sift
+      POSTGRES_DB: sift
+    command: >
+      postgres -c shared_buffers=512MB -c effective_cache_size=1GB
+               -c maintenance_work_mem=256MB -c work_mem=16MB
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sift -d sift"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 1536m } } }
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 192mb --maxmemory-policy volatile-lru
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 256m } } }
+
+volumes:
+  pgdata:
+  redisdata:
