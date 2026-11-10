@@ -101,7 +101,7 @@ async def search(req: SearchRequest, request: Request, engine: EngineDep) -> Sea
         time_range=req.time_range,
         include_answer=req.include_answer,
     )
-    if req.include_answer and out.answer is None and getattr(engine, "llm", None) is None:
+    if req.include_answer and out.answer is None and not getattr(engine.llm, "configured", False):
         out.providers_skipped["answer"] = "no LLM configured"
     resp = _build_response(req, out, time.perf_counter() - t0)
     await qcache.set(cache_key, resp.model_dump(mode="json"), ttl)

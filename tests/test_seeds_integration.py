@@ -30,7 +30,7 @@ async def pool():
     await p.close()
 
 
-async def test_load_pack_and_search(tmp_path):
+async def test_load_pack_and_search(pool, tmp_path):
     pages = [
         Page(
             "https://pg.example/jsonb", "JSONB", "Postgres stores JSON as jsonb. " * 40, "devdocs"
@@ -39,33 +39,28 @@ async def test_load_pack_and_search(tmp_path):
     ]
     build_pack(pages, tmp_path, name="devdocs", license="x", source="docs", embed=_embed)
 
-    p = await create_pool(DSN)
-    await migrate(p)
-    try:
-        result = await load_pack(p, tmp_path)
-        assert result["passages"] > 0
-        async with p.acquire() as c:
-            assert await c.fetchval("SELECT count(*) FROM pages") == 2
-            assert await c.fetchval("SELECT count(*) FROM passages") == result["passages"]
-            assert await c.fetchval("SELECT count(*) FROM seed_packs") == 0  # CLI records it
+    result = await load_pack(pool, tmp_path)
+    assert result["passages"] > 0
+    async with pool.acquire() as c:
+        assert await c.fetchval("SELECT count(*) FROM pages") == 2
+        assert await c.fetchval("SELECT count(*) FROM passages") == result["passages"]
+        # passage content came from the pack and matches the page text offsets
+        bad = await c.fetchval(
+            "SELECT count(*) FROM passages ps JOIN pages pg ON pg.id = ps.page_id "
+            "WHERE substr(pg.content, ps.char_start + 1, ps.char_end - ps.char_start) <> ps.content"
+        )
+        assert bad == 0
 
-        idx = LocalIndex(p)
-        hits = await idx.search("jsonb", None, 5)
-        assert hits and hits[0].page.origin == "index"
-    finally:
-        await p.close()
+    idx = LocalIndex(pool)
+    hits = await idx.search("jsonb", None, 5)
+    assert hits and hits[0].page.origin == "index"
 
 
-async def test_load_is_idempotent(tmp_path):
+async def test_load_is_idempotent(pool, tmp_path):
     pages = [Page("https://pg.example/jsonb", "JSONB", "Postgres jsonb. " * 40, "devdocs")]
     build_pack(pages, tmp_path, name="devdocs", license="x", source="docs", embed=_embed)
 
-    p = await create_pool(DSN)
-    await migrate(p)
-    try:
-        await load_pack(p, tmp_path)
-        await load_pack(p, tmp_path)
-        async with p.acquire() as c:
-            assert await c.fetchval("SELECT count(*) FROM pages") == 1
-    finally:
-        await p.close()
+    await load_pack(pool, tmp_path)
+    await load_pack(pool, tmp_path)
+    async with pool.acquire() as c:
+        assert await c.fetchval("SELECT count(*) FROM pages") == 1

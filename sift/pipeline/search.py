@@ -204,6 +204,7 @@ async def _run_single(
     )
 
     engine.schedule_index([p for p in pages if p.origin == "live"])
+    engine.schedule_touch([r.passage.page.url for r in chosen])
 
     texts = await _raw_content(engine, chosen, include_raw_content)
     used = list(cres.providers_used)
@@ -318,6 +319,7 @@ async def _run_multi(
     timings["rank"] = _ms(t2) - embed_ms
 
     engine.schedule_index([p for p in pages if p.origin == "live"])
+    engine.schedule_touch([r.passage.page.url for r in chosen])
 
     texts = await _raw_content(engine, chosen, include_raw_content)
     used: list[str] = []

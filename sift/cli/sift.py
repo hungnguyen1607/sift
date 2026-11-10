@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 
 import httpx
@@ -129,8 +130,8 @@ async def _stats(pool, redis) -> None:
 
 
 async def _search(query: str, depth: str, max_tokens: int, as_json: bool) -> None:
-    base = "http://localhost:8000"
-    async with httpx.AsyncClient(base_url=base, timeout=30.0) as client:
+    base = os.environ.get("SIFT_URL", "http://localhost:8000").rstrip("/")
+    async with httpx.AsyncClient(base_url=base, timeout=60.0) as client:
         resp = await client.post(
             "/v1/search", json={"query": query, "search_depth": depth, "max_tokens": max_tokens}
         )
@@ -149,10 +150,12 @@ async def _search(query: str, depth: str, max_tokens: int, as_json: bool) -> Non
 async def _doctor(pool, redis, http) -> None:
     ok = True
 
-    def check(label: str, good: bool, detail: str = ""):
+    def check(label: str, good: bool, detail: str = "", required: bool = True):
         nonlocal ok
-        ok = ok and good
-        print(f"{'✓' if good else '✗'} {label}" + (f"  {detail}" if detail else ""))
+        if required:
+            ok = ok and good
+        mark = "✓" if good else ("✗" if required else "·")
+        print(f"{mark} {label}" + (f"  {detail}" if detail else ""))
 
     try:
         await pool.fetchval("SELECT 1")
@@ -175,14 +178,21 @@ async def _doctor(pool, redis, http) -> None:
         "serper": settings.serper_key,
     }
     for name, key in keys.items():
-        check(f"provider key: {name}", bool(key), "set" if key else "not set (disabled)")
+        # Optional: absent keys just mean that source is disabled, not a failure.
+        check(
+            f"provider key: {name}",
+            bool(key),
+            "set" if key else "not set (disabled)",
+            required=False,
+        )
 
     check(
         "LLM",
         bool(settings.llm_model),
         f"{settings.llm_provider or 'openai'} {settings.llm_model}"
         if settings.llm_model
-        else "off",
+        else "off (optional)",
+        required=False,
     )
 
     for host in ("https://en.wikipedia.org", "https://api.openalex.org"):

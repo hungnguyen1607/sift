@@ -7,6 +7,7 @@ import time
 
 from sift.config import get_settings
 from sift.index.db import create_pool, migrate
+from sift.index.maintenance import evict_pages
 from sift.pipeline.embed import FastEmbedder
 from sift.worker import queue
 from sift.worker.jobs import HANDLERS
@@ -49,6 +50,9 @@ async def main() -> None:
         if time.monotonic() - last_maintain > 60:
             async with pool.acquire() as conn:
                 await queue.maintain(conn)
+                evicted = await evict_pages(conn, settings.max_pages, settings.page_retention_days)
+                if evicted:
+                    log.info("evicted %s pages (LRU/retention)", evicted)
             last_maintain = time.monotonic()
         if not await run_once(pool, embedder):
             try:

@@ -21,6 +21,7 @@ class Index(Protocol):
     async def search(self, query: str, query_vec, limit: int) -> list[Passage]: ...
     async def known_pages(self, urls: list[str]) -> dict[str, list[Passage]]: ...
     async def page_texts(self, urls: list[str]) -> dict[str, str]: ...
+    async def touch(self, urls: list[str]) -> None: ...
 
 
 class Enqueuer(Protocol):
@@ -57,6 +58,22 @@ class Engine:
                     await self.enqueue("index_page", page_payload(page))
                 except Exception as e:
                     log.warning("could not enqueue %s: %r", page.url, e)
+
+        task = asyncio.create_task(run())
+        self._bg.add(task)
+        task.add_done_callback(self._bg.discard)
+
+    def schedule_touch(self, urls: list[str]) -> None:
+        """Mark returned pages as recently used (LRU), off the request path."""
+        index = self.index
+        if index is None or not urls:
+            return
+
+        async def run():
+            try:
+                await index.touch(urls)
+            except Exception as e:
+                log.warning("could not touch pages: %r", e)
 
         task = asyncio.create_task(run())
         self._bg.add(task)

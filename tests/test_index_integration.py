@@ -121,3 +121,21 @@ async def test_failing_job_retries_then_fails(pool):
     await run_once(pool, Broken())
     async with pool.acquire() as c:
         assert await c.fetchval("SELECT status FROM jobs") == "failed"
+
+
+async def test_touch_and_evict_lru(pool):
+    from sift.index.maintenance import evict_pages
+
+    emb = FakeEmbedder()
+    for i in range(5):
+        await queue.enqueue(pool, "index_page", page_payload(page(url=f"https://e{i}.com/")))
+        await run_once(pool, emb)
+
+    idx = LocalIndex(pool)
+    await idx.touch(["https://e0.com/"])  # make page 0 the most-recently-used
+
+    async with pool.acquire() as c:
+        deleted = await evict_pages(c, max_pages=2, retention_days=0)
+        remaining = {r["url"] for r in await c.fetch("SELECT url FROM pages")}
+    assert deleted == 3
+    assert remaining == {"https://e0.com/", "https://e4.com/"}

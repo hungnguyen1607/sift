@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     local_candidates: int = 30
     per_site_limit: int = 2
 
+    # Index growth bound: evict least-recently-used pages beyond `max_pages`
+    # and/or pages unused for `page_retention_days`. 0 disables that rule.
+    max_pages: int = 0
+    page_retention_days: int = 0
+
     # Reranker (advanced depth only), loaded lazily in the API process.
     reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     rerank_passages: int = 15

@@ -129,3 +129,21 @@ async def test_search_web_auto_fires_only_when_thin(quota_for):
     quota = quota_for([base, searxng])
     r = await gather_candidates("keyword", [base], quota, fallbacks=[searxng], search_web="auto")
     assert "searxng" not in r.providers_used and searxng.calls == 0
+
+
+async def test_include_domains_filters_fallback_results(quota_for):
+    base = FakeProvider("wikipedia", [cand("https://en.wikipedia.org/wiki/A")])
+    searxng = FakeProvider(
+        "searxng", [cand("https://other.com/x"), cand("https://en.wikipedia.org/wiki/B")]
+    )
+    quota = quota_for([base, searxng])
+    r = await gather_candidates(
+        "q",
+        [base],
+        quota,
+        fallbacks=[searxng],
+        search_web="always",
+        include_domains=["wikipedia.org"],
+    )
+    urls = [m.candidate.url for m in r.candidates]
+    assert urls and all("wikipedia.org" in u for u in urls), urls

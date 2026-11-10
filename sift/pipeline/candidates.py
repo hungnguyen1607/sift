@@ -196,6 +196,13 @@ async def gather_candidates(
         t.cancel()
         skipped[tasks[t].name] = f"timeout after {budget_s}s"
 
+    def filter_domains(items: list[Candidate]) -> list[Candidate]:
+        if include_domains:
+            items = [c for c in items if domain_matches(c.url, include_domains)]
+        if exclude_domains:
+            items = [c for c in items if not domain_matches(c.url, exclude_domains)]
+        return items
+
     ranked: dict[str, list[Candidate]] = {}
     for t in done:
         name = tasks[t].name
@@ -204,25 +211,24 @@ async def gather_candidates(
             log.info("provider %s failed: %s", name, exc)
             skipped[name] = str(exc) or type(exc).__name__
             continue
-        items = t.result()
-        if include_domains:
-            items = [c for c in items if domain_matches(c.url, include_domains)]
-        if exclude_domains:
-            items = [c for c in items if not domain_matches(c.url, exclude_domains)]
-        ranked[name] = items
+        ranked[name] = filter_domains(t.result())
 
     if early:
         fb_items, fb_name, fb_skipped = await fb_task
         skipped.update(fb_skipped)
         if fb_name and fb_items:
-            ranked[fb_name] = fb_items
+            fb_items = filter_domains(fb_items)
+            if fb_items:
+                ranked[fb_name] = fb_items
     elif fallbacks and _thin(list(rrf_merge(ranked)), query):
         fb_items, fb_name, fb_skipped = await _run_fallback(
             fallbacks, query, keywords, per_provider, quota, time_range
         )
         skipped.update(fb_skipped)
         if fb_name and fb_items:
-            ranked[fb_name] = fb_items
+            fb_items = filter_domains(fb_items)
+            if fb_items:
+                ranked[fb_name] = fb_items
 
     # Keep provider order stable for the response, regardless of finish order.
     order = [p.name for p in providers] + [p.name for p in fallbacks]

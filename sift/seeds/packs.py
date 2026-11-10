@@ -142,6 +142,7 @@ def build_pack(
             {
                 "page_url": page.url,
                 "ord": ord_i,
+                "content": page.text[s.start : s.end],
                 "char_start": s.start,
                 "char_end": s.end,
                 "heading": s.heading,
@@ -169,6 +170,7 @@ def build_pack(
             {
                 "page_url": [r["page_url"] for r in passage_rows],
                 "ord": [r["ord"] for r in passage_rows],
+                "content": [r["content"] for r in passage_rows],
                 "char_start": [r["char_start"] for r in passage_rows],
                 "char_end": [r["char_end"] for r in passage_rows],
                 "heading": [r["heading"] for r in passage_rows],

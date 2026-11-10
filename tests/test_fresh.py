@@ -83,3 +83,12 @@ def test_tavily_time_range():
     assert tavily_time_range("w") == "week"
     assert tavily_time_range("m") == "month"
     assert tavily_time_range("y") == "year"
+
+
+def test_apply_freshness_handles_naive_datetime():
+    from datetime import datetime
+
+    # A naive (tz-less) date must not crash the aware-vs-naive comparison.
+    page = Page("https://a.dev/", "T", "x", "x", updated=datetime(2020, 1, 1))
+    out = apply_freshness([Ranked(Passage(page, "x", 0, 1), 0.5)], "year", True, now=NOW)
+    assert out == []  # 2020 is older than the window → dropped, no TypeError

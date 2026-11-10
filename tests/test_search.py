@@ -242,3 +242,13 @@ async def test_fresh_only_drops_old_results():
     out = await run_search(e, "news", max_results=4, fresh_only=True)
     urls = {r.passage.page.url for r in out.results}
     assert "https://fresh.example/" in urls and "https://old.example/" not in urls
+
+
+async def test_search_touches_returned_pages_for_lru():
+    import asyncio
+
+    idx = FakeIndex()
+    e = engine([FakeProvider("stackexchange", [so_candidate()])], index=idx)
+    out = await run_search(e, "reverse a list python")
+    await asyncio.sleep(0.05)  # let the background touch task run
+    assert {r.passage.page.url for r in out.results} <= set(idx.touched)

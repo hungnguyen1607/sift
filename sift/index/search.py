@@ -79,6 +79,16 @@ class LocalIndex:
             out.append(_passage(page, r))
         return out
 
+    async def touch(self, urls: list[str]) -> None:
+        """Mark pages as just-used for LRU eviction (best effort)."""
+        if not urls:
+            return
+        norms = list({normalize_url(u) for u in urls})
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE pages SET last_used_at = now() WHERE url_norm = ANY($1::text[])", norms
+            )
+
     async def page_texts(self, urls: list[str]) -> dict[str, str]:
         """url_norm → full clean text (the API's raw_content)."""
         if not urls:

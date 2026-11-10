@@ -202,3 +202,12 @@ async def test_stackexchange_content_has_question_and_top_answers(client):
         "# Reverse a list?\n\nHow?\n\n## Accepted answer (score 1)\n\naccepted\n\n"
         "## Answer (score 900)\n\n```\nxs[::-1]\n```\n\n## Answer (score 50)\n\nmid"
     )
+
+
+def test_parse_ts_returns_aware_datetime():
+    from sift.providers.base import parse_ts
+
+    assert parse_ts("2021-06-28").tzinfo is not None  # date-only → assumed UTC
+    assert parse_ts("2021-06-28T00:00:00Z").tzinfo is not None
+    assert parse_ts("2021-06-28T00:00:00").tzinfo is not None  # no zone → UTC
+    assert parse_ts(None) is None

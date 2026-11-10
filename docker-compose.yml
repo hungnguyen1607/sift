@@ -3,7 +3,6 @@
 services:
   api:
     build: .
-    image: ghcr.io/hungnguyen1607/sift:latest
     ports: ["${SIFT_PORT:-8000}:8000"]
     env_file: [{ path: .env, required: false }]
     environment:
@@ -19,7 +18,7 @@ services:
 
   # Background index writer: embeds full passages and writes them to Postgres.
   worker:
-    image: ghcr.io/hungnguyen1607/sift:latest
+    build: .
     command: ["python", "-m", "sift.worker"]
     env_file: [{ path: .env, required: false }]
     environment:
@@ -46,6 +45,7 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg16
+    shm_size: 1g
     environment:
       POSTGRES_USER: sift
       POSTGRES_PASSWORD: sift

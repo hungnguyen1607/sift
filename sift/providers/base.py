@@ -207,12 +207,16 @@ def strip_html(text: str | None, max_len: int | None = None) -> str:
 
 
 def parse_ts(value) -> datetime | None:
-    """Parse an ISO-8601 string or a Unix timestamp into an aware datetime."""
+    """Parse an ISO-8601 string or a Unix timestamp into an aware datetime.
+
+    Date-only values (``"2021-06-28"``) and strings without a zone parse to a
+    naive datetime, so assume UTC — callers compare against an aware cutoff."""
     if value in (None, ""):
         return None
     try:
         if isinstance(value, int | float):
             return datetime.fromtimestamp(value, UTC)
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
     except (ValueError, OverflowError, OSError):
         return None

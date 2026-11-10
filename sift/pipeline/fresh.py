@@ -67,6 +67,8 @@ def apply_freshness(
         page = r.passage.page
         latest = page.updated or page.published
         if latest is not None:
+            if latest.tzinfo is None:  # defensive: compare aware-vs-aware
+                latest = latest.replace(tzinfo=UTC)
             if latest < cutoff:
                 continue
         elif fresh_only:

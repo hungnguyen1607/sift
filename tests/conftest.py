@@ -77,9 +77,13 @@ class FakeIndex:
         self.known = known or {}
         self.texts = texts or {}
         self.extractable_pages = extractable or {}
+        self.touched = []
 
     async def search(self, query, qvec, limit):
         return self.hits[:limit]
+
+    async def touch(self, urls):
+        self.touched.extend(urls)
 
     async def extractable(self, urls, max_age_days=7):
         from sift.pipeline.candidates import normalize_url
