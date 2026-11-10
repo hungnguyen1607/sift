@@ -152,3 +152,93 @@ async def test_live_embedding_respects_budget_and_keeps_partial_results():
     assert asyncio.get_running_loop().time() - t0 < 1.5
     embedded = {r.passage.page.url for r in out.results if r.passage.embedding}
     assert embedded and "https://long.dev/" not in embedded
+
+
+async def test_max_tokens_caps_total_tokens():
+    from sift.pipeline.pack import result_tokens
+
+    cands = [
+        Candidate(
+            f"https://s{i}.dev/", f"Reverse {i}", "", "hn", content="reverse list python " * 100
+        )
+        for i in range(5)
+    ]
+    e = engine([FakeProvider("hn", cands)])
+    out = await run_search(e, "reverse list python", max_results=10, max_tokens=500)
+    assert out.tokens_used is not None
+    assert out.tokens_used <= 500
+    total = sum(
+        result_tokens(r.passage.page.title, r.passage.page.url, r.passage.text) for r in out.results
+    )
+    assert total <= 500
+
+
+async def test_max_tokens_smaller_than_any_passage_returns_empty():
+    cands = [Candidate("https://s0.dev/", "T", "", "hn", content="reverse list python " * 100)]
+    e = engine([FakeProvider("hn", cands)])
+    out = await run_search(e, "reverse list python", max_results=5, max_tokens=10)
+    assert out.results == [] and out.tokens_used == 0
+
+
+class QueryAware(FakeProvider):
+    """Returns different candidates depending on the query, so a multi-part
+    question can be split and each side matched."""
+
+    def __init__(self, name, mapping):
+        super().__init__(name, [])
+        self.mapping = mapping
+
+    async def search(self, query, limit, time_range=None):
+        for key, results in self.mapping.items():
+            if key in query.lower():
+                return results[:limit]
+        return []
+
+
+async def test_compare_query_returns_both_sides():
+    pg = Candidate(
+        "https://pg.example/",
+        "Postgres JSONB",
+        "",
+        "wikipedia",
+        content="Postgres stores JSON as jsonb, a binary format. " * 20,
+    )
+    mysql = Candidate(
+        "https://mysql.example/",
+        "MySQL JSON",
+        "",
+        "wikipedia",
+        content="MySQL has a JSON data type backed by binary storage. " * 20,
+    )
+    provider = QueryAware("wikipedia", {"postgres": [pg], "mysql": [mysql]})
+    e = engine([provider])
+    out = await run_search(e, "compare Postgres and MySQL for JSON workloads", max_results=4)
+    assert out.sub_queries == ["Postgres JSON workloads", "MySQL JSON workloads"]
+    urls = {r.passage.page.url for r in out.results}
+    assert "https://pg.example/" in urls and "https://mysql.example/" in urls
+
+
+async def test_fresh_only_drops_old_results():
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
+    fresh = Candidate(
+        "https://fresh.example/",
+        "Fresh",
+        "",
+        "wikipedia",
+        content="recent news " * 20,
+        updated=now - timedelta(days=1),
+    )
+    old = Candidate(
+        "https://old.example/",
+        "Old",
+        "",
+        "wikipedia",
+        content="stale news " * 20,
+        updated=now - timedelta(days=400),
+    )
+    e = engine([FakeProvider("wikipedia", [fresh, old])])
+    out = await run_search(e, "news", max_results=4, fresh_only=True)
+    urls = {r.passage.page.url for r in out.results}
+    assert "https://fresh.example/" in urls and "https://old.example/" not in urls

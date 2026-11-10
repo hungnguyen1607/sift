@@ -9,9 +9,11 @@ services:
     environment:
       SIFT_DATABASE_URL: postgresql://sift:sift@postgres:5432/sift
       SIFT_REDIS_URL: redis://redis:6379/0
+      SIFT_SEARXNG_URL: http://searxng:8080
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      searxng: { condition: service_started }
     restart: unless-stopped
     deploy: { resources: { limits: { memory: 1g, cpus: "2" } } }
 
@@ -23,12 +25,24 @@ services:
     environment:
       SIFT_DATABASE_URL: postgresql://sift:sift@postgres:5432/sift
       SIFT_REDIS_URL: redis://redis:6379/0
+      SIFT_SEARXNG_URL: http://searxng:8080
     depends_on:
       postgres: { condition: service_healthy }
       api: { condition: service_started }
     healthcheck: { disable: true }
     restart: unless-stopped
     deploy: { resources: { limits: { memory: 768m, cpus: "1" } } }
+
+  # Self-hosted meta-search backend: gives Sift "search anything" general web
+  # coverage without any vendor API keys. Keep it updated (cron `docker compose
+  # pull searxng`) so its engine parsers track Google/Bing HTML changes.
+  searxng:
+    image: searxng/searxng:latest
+    volumes: ["./searxng-settings.yml:/etc/searxng/settings.yml:ro"]
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8080
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 256m } } }
 
   postgres:
     image: pgvector/pgvector:pg16

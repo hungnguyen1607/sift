@@ -41,11 +41,18 @@ class StackExchangeProvider(Provider):
             params["key"] = self.key
         return params
 
-    async def search(self, query: str, limit: int) -> list[Candidate]:
+    async def search(
+        self, query: str, limit: int, time_range: str | None = None
+    ) -> list[Candidate]:
+        params = self._params(order="desc", sort="relevance", q=query, pagesize=limit)
+        if time_range:
+            from sift.pipeline.fresh import cutoff_epoch
+
+            params["fromdate"] = cutoff_epoch(time_range, False)
         data = await self._get_json(
             self.client,
             "https://api.stackexchange.com/2.3/search/advanced",
-            params=self._params(order="desc", sort="relevance", q=query, pagesize=limit),
+            params=params,
         )
         return [self._candidate(item) for item in data.get("items", [])]
 

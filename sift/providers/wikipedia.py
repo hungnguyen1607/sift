@@ -23,7 +23,9 @@ class WikipediaProvider(Provider):
         self.host = f"{lang}.wikipedia.org"
         self.api = f"https://{self.host}/w/api.php"
 
-    async def search(self, query: str, limit: int) -> list[Candidate]:
+    async def search(
+        self, query: str, limit: int, time_range: str | None = None
+    ) -> list[Candidate]:
         data = await self._get_json(
             self.client,
             self.api,

@@ -1,0 +1,100 @@
+{"id": "coding-01", "category": "coding", "query": "How do I sort a list of dictionaries by a key in Python?"}
+{"id": "coding-02", "category": "coding", "query": "What is the difference between let, const, and var in JavaScript?"}
+{"id": "coding-03", "category": "coding", "query": "How do I make a LEFT JOIN in PostgreSQL?"}
+{"id": "coding-04", "category": "coding", "query": "What is the Rust borrow checker and why does it reject my code?"}
+{"id": "coding-05", "category": "coding", "query": "How do I run a container with a mounted volume in Docker?"}
+{"id": "coding-06", "category": "coding", "query": "How do I configure CORS in FastAPI?"}
+{"id": "coding-07", "category": "coding", "query": "What is the difference between a thread and a process?"}
+{"id": "coding-08", "category": "coding", "query": "How do I compute the Fibonacci sequence recursively in Python?"}
+{"id": "coding-09", "category": "coding", "query": "How do I use async and await in Node.js?"}
+{"id": "coding-10", "category": "coding", "query": "What is a deadlock and how do I avoid it?"}
+{"id": "coding-11", "category": "coding", "query": "How do I connect to PostgreSQL with asyncpg in Python?"}
+{"id": "coding-12", "category": "coding", "query": "What is the difference between git merge and git rebase?"}
+{"id": "coding-13", "category": "coding", "query": "How do I type hint a function that returns a list of strings in Python?"}
+{"id": "coding-14", "category": "coding", "query": "How do I handle errors in Go?"}
+{"id": "coding-15", "category": "coding", "query": "What is an HNSW index in pgvector?"}
+{"id": "coding-16", "category": "coding", "query": "How do I use a decorator in Python?"}
+{"id": "coding-17", "category": "coding", "query": "What is the difference between a struct and a class in C++?"}
+{"id": "coding-18", "category": "coding", "query": "How do I paginate results in a SQL query?"}
+{"id": "coding-19", "category": "coding", "query": "What is tail recursion and when does it matter?"}
+{"id": "coding-20", "category": "coding", "query": "How do I write a pytest that checks an exception is raised?"}
+{"id": "facts-01", "category": "facts", "query": "When was the Python programming language first released?"}
+{"id": "facts-02", "category": "facts", "query": "What is the capital of Australia?"}
+{"id": "facts-03", "category": "facts", "query": "Who wrote the novel One Hundred Years of Solitude?"}
+{"id": "facts-04", "category": "facts", "query": "What is the atomic number of gold?"}
+{"id": "facts-05", "category": "facts", "query": "What is the speed of light in a vacuum?"}
+{"id": "facts-06", "category": "facts", "query": "Which planet in the solar system has the most moons?"}
+{"id": "facts-07", "category": "facts", "query": "What year did the Berlin Wall fall?"}
+{"id": "facts-08", "category": "facts", "query": "What is the largest mammal on Earth?"}
+{"id": "facts-09", "category": "facts", "query": "What is the population of Japan?"}
+{"id": "facts-10", "category": "facts", "query": "Who developed the theory of general relativity?"}
+{"id": "facts-11", "category": "facts", "query": "What is the tallest mountain on Earth?"}
+{"id": "facts-12", "category": "facts", "query": "What is the chemical formula for water?"}
+{"id": "facts-13", "category": "facts", "query": "Who painted the Mona Lisa?"}
+{"id": "facts-14", "category": "facts", "query": "What is the smallest country in the world by area?"}
+{"id": "facts-15", "category": "facts", "query": "What is the largest ocean on Earth?"}
+{"id": "facts-16", "category": "facts", "query": "When did World War II end?"}
+{"id": "facts-17", "category": "facts", "query": "What is the currency of Switzerland?"}
+{"id": "facts-18", "category": "facts", "query": "Who composed The Four Seasons?"}
+{"id": "facts-19", "category": "facts", "query": "What is the deepest point in the ocean?"}
+{"id": "facts-20", "category": "facts", "query": "What is the boiling point of water at sea level in Celsius?"}
+{"id": "news-01", "category": "news", "query": "What are the latest developments in large language models?"}
+{"id": "news-02", "category": "news", "query": "What is new in the latest Python release?"}
+{"id": "news-03", "category": "news", "query": "Recent news about technology layoffs"}
+{"id": "news-04", "category": "news", "query": "What are the latest PostgreSQL release features?"}
+{"id": "news-05", "category": "news", "query": "Recent developments in renewable energy"}
+{"id": "news-06", "category": "news", "query": "What is the latest version of Node.js?"}
+{"id": "news-07", "category": "news", "query": "Latest news in artificial intelligence regulation"}
+{"id": "news-08", "category": "news", "query": "What are the newest JavaScript frameworks in 2026?"}
+{"id": "news-09", "category": "news", "query": "Recent advances in nuclear fusion energy"}
+{"id": "news-10", "category": "news", "query": "What is the latest release of Kubernetes?"}
+{"id": "news-11", "category": "news", "query": "Recent breakthroughs in quantum computing"}
+{"id": "news-12", "category": "news", "query": "What is new in React 19?"}
+{"id": "news-13", "category": "news", "query": "Latest trends in cloud computing"}
+{"id": "news-14", "category": "news", "query": "Who won the most recent Nobel Prizes?"}
+{"id": "news-15", "category": "news", "query": "Recent developments in electric vehicles"}
+{"id": "news-16", "category": "news", "query": "What is the latest version of the Go programming language?"}
+{"id": "news-17", "category": "news", "query": "Recent news about open source software"}
+{"id": "news-18", "category": "news", "query": "What is new in the latest Rust release?"}
+{"id": "news-19", "category": "news", "query": "Latest developments in space exploration"}
+{"id": "news-20", "category": "news", "query": "What is the current state of the semiconductor market?"}
+{"id": "howto-01", "category": "howto", "query": "How do I reverse a list in Python?"}
+{"id": "howto-02", "category": "howto", "query": "How do I set up a PostgreSQL database with docker compose?"}
+{"id": "howto-03", "category": "howto", "query": "How do I write a resume that passes automated screening?"}
+{"id": "howto-04", "category": "howto", "query": "How do I learn Rust from scratch?"}
+{"id": "howto-05", "category": "howto", "query": "How do I make sourdough bread?"}
+{"id": "howto-06", "category": "howto", "query": "How do I reduce the memory usage of a Docker container?"}
+{"id": "howto-07", "category": "howto", "query": "How do I improve the latency of a slow SQL query?"}
+{"id": "howto-08", "category": "howto", "query": "How do I deploy a FastAPI app behind HTTPS?"}
+{"id": "howto-09", "category": "howto", "query": "How do I migrate from MySQL to PostgreSQL?"}
+{"id": "howto-10", "category": "howto", "query": "How do I train a machine learning model on a GPU?"}
+{"id": "howto-11", "category": "howto", "query": "How do I configure SSH keys on a new server?"}
+{"id": "howto-12", "category": "howto", "query": "How do I make my Python code run faster?"}
+{"id": "howto-13", "category": "howto", "query": "How do I set up a reverse proxy with Caddy?"}
+{"id": "howto-14", "category": "howto", "query": "How do I write unit tests for async Python code?"}
+{"id": "howto-15", "category": "howto", "query": "How do I choose between Redis and Memcached?"}
+{"id": "howto-16", "category": "howto", "query": "How do I secure a Linux server?"}
+{"id": "howto-17", "category": "howto", "query": "How do I create a virtual environment in Python?"}
+{"id": "howto-18", "category": "howto", "query": "How do I debug a memory leak in Node.js?"}
+{"id": "howto-19", "category": "howto", "query": "How do I contribute to an open source project?"}
+{"id": "howto-20", "category": "howto", "query": "How do I design a database schema for a blog?"}
+{"id": "multi-01", "category": "multi", "query": "Compare Postgres and MySQL for JSON workloads"}
+{"id": "multi-02", "category": "multi", "query": "What is the difference between SQL and NoSQL databases?"}
+{"id": "multi-03", "category": "multi", "query": "Compare Docker and virtual machines for deployment"}
+{"id": "multi-04", "category": "multi", "query": "React vs Vue for a new project"}
+{"id": "multi-05", "category": "multi", "query": "What are the pros and cons of Python and Java for backend development?"}
+{"id": "multi-06", "category": "multi", "query": "Compare Redis and Memcached for caching"}
+{"id": "multi-07", "category": "multi", "query": "What is the difference between HTTP and HTTPS?"}
+{"id": "multi-08", "category": "multi", "query": "Compare Kubernetes and Docker Swarm for orchestration"}
+{"id": "multi-09", "category": "multi", "query": "Rust vs Go for systems programming"}
+{"id": "multi-10", "category": "multi", "query": "What are the pros and cons of monoliths and microservices?"}
+{"id": "multi-11", "category": "multi", "query": "Compare AWS and GCP for a startup"}
+{"id": "multi-12", "category": "multi", "query": "What is the difference between TCP and UDP?"}
+{"id": "multi-13", "category": "multi", "query": "Compare TypeScript and JavaScript"}
+{"id": "multi-14", "category": "multi", "query": "What are the pros and cons of using an ORM?"}
+{"id": "multi-15", "category": "multi", "query": "Compare Postgres and MongoDB for a chat application"}
+{"id": "multi-16", "category": "multi", "query": "What is the difference between a library and a framework?"}
+{"id": "multi-17", "category": "multi", "query": "Compare Caddy and Nginx as a reverse proxy"}
+{"id": "multi-18", "category": "multi", "query": "What are the pros and cons of serverless and containers?"}
+{"id": "multi-19", "category": "multi", "query": "Compare Ubuntu and Fedora for a development machine"}
+{"id": "multi-20", "category": "multi", "query": "What is the difference between merge and rebase in git?"}

@@ -1,6 +1,6 @@
 [project]
 name = "sift"
-version = "0.2.0"
+version = "0.5.0"
 description = "Open-source, self-hostable search API for AI agents. Tavily-compatible, token-budgeted, citation-precise."
 readme = "README.md"
 license = "MIT"
@@ -17,7 +17,13 @@ dependencies = [
   "htmldate>=1.9",
   "lxml>=5.0",
   "fastembed>=0.5",
+  "tiktoken>=0.7",
+  "mcp<2",
+  "pyarrow>=15.0",
 ]
+
+[project.scripts]
+sift = "sift.cli.sift:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.21", "fakeredis>=2.23", "ruff>=0.6"]

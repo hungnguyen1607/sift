@@ -27,3 +27,26 @@ def keyword_query(query: str) -> str:
         t for t in tokens if t.startswith('"') or re.sub(r"['’]", "", t.lower()) not in _STOPWORDS
     ]
     return " ".join(kept) if kept else query.strip()
+
+
+_ACADEMIC_WORDS = frozenset(
+    "paper study arxiv et al theorem dataset research preprint journal paper "
+    "publication abstract citation author peer-reviewed survey benchmark "
+    "methodology experiment results".split()
+)
+_RECENCY_WORDS = frozenset(
+    "today latest new news recent now 2024 2025 2026 2027 release price announcement "
+    "this week this month this year just released".split()
+)
+
+
+def looks_academic(query: str) -> bool:
+    """Cheap classifier: does this query want research papers? Science providers
+    (arXiv, OpenAlex) are only worth querying then."""
+    words = {w.strip("'’\".!?,:;").lower() for w in query.split()}
+    return bool(words & _ACADEMIC_WORDS) or "et al" in query.lower()
+
+
+def has_recency_words(query: str) -> bool:
+    words = {w.strip("'’\".!?,:;").lower() for w in query.split()}
+    return bool(words & _RECENCY_WORDS)

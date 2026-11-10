@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 
 from sift.api.deps import Engine
 from sift.api.main import create_app
+from sift.api.ratelimit import RateLimiter
 from sift.config import Settings
+from sift.pipeline.cache import QueryCache
 from sift.providers.base import Candidate, QuotaManager
 
 from .conftest import FakeEmbedder, FakeIndex, FakeProvider
@@ -45,13 +47,16 @@ def client():
 
     @asynccontextmanager
     async def lifespan(app):
+        r = fakeredis.FakeAsyncRedis(decode_responses=True)
         quota = QuotaManager(
-            fakeredis.FakeAsyncRedis(decode_responses=True),
+            r,
             {p.name: (None, "month") for p in providers},
         )
         app.state.engine = Engine(
             Settings(), providers, quota, embedder=FakeEmbedder(), index=FakeIndex()
         )
+        app.state.query_cache = QueryCache(r)
+        app.state.rate_limiter = RateLimiter(r)
         yield
 
     with TestClient(create_app(lifespan)) as c:
@@ -107,3 +112,29 @@ def test_invalid_requests(client, payload):
 def test_usage(client):
     client.post("/v1/search", json={"query": "q"})
     assert client.get("/v1/usage").json()["providers"]["hn"]["used"] == 1
+
+
+def test_repeated_query_hits_cache(client):
+    first = client.post("/v1/search", json={"query": "jsonb binary format"})
+    assert first.json()["cache_hit"] is False
+    second = client.post("/v1/search", json={"query": "jsonb binary format"})
+    assert second.status_code == 200
+    body = second.json()
+    assert body["cache_hit"] is True
+    assert body["results"] == first.json()["results"]
+
+
+def test_verify_without_llm_is_unclear(client):
+    r = client.post("/v1/verify", json={"claim": "postgres uses jsonb"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["verdict"] == "unclear"
+    assert "supporting" in body and "contradicting" in body
+
+
+def test_include_answer_without_llm_is_null_and_noted(client):
+    r = client.post("/v1/search", json={"query": "jsonb", "include_answer": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["answer"] is None
+    assert body["providers_skipped"]["answer"] == "no LLM configured"

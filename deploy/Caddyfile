@@ -1,0 +1,5 @@
+# Caddy: automatic HTTPS for the Sift demo. Replace with your domain.
+sift.example.com {
+    reverse_proxy api:8000
+    encode gzip
+}

@@ -1,0 +1,67 @@
+# Production deploy for a shared VPS: GHCR image pinned to a tag, Postgres and
+# Redis not published to the host, memory limits that stay within ~3 GB, and
+# log rotation. Caddy (separate) fronts `api` on 80/443.
+services:
+  api:
+    image: ghcr.io/hungnguyen1607/sift:${SIFT_TAG:-latest}
+    expose: ["8000"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      SIFT_DATABASE_URL: postgresql://sift:${POSTGRES_PASSWORD:-sift}@postgres:5432/sift
+      SIFT_REDIS_URL: redis://redis:6379/0
+      SIFT_AUTH: "on"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+    deploy: { resources: { limits: { memory: 1g, cpus: "2" } } }
+
+  worker:
+    image: ghcr.io/hungnguyen1607/sift:${SIFT_TAG:-latest}
+    command: ["python", "-m", "sift.worker"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      SIFT_DATABASE_URL: postgresql://sift:${POSTGRES_PASSWORD:-sift}@postgres:5432/sift
+      SIFT_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      api: { condition: service_started }
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+    deploy: { resources: { limits: { memory: 768m, cpus: "1" } } }
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: sift
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sift}
+      POSTGRES_DB: sift
+    command: >
+      postgres -c shared_buffers=512MB -c effective_cache_size=1GB
+               -c maintenance_work_mem=256MB -c work_mem=16MB
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sift -d sift"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+    deploy: { resources: { limits: { memory: 1536m } } }
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 192mb --maxmemory-policy volatile-lru
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 256m } } }
+
+volumes:
+  pgdata:
+  redisdata:

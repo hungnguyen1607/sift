@@ -34,11 +34,15 @@ class Engine:
     settings: Settings
     providers: list[Provider]
     quota: QuotaManager
+    fallbacks: list[Provider] = field(default_factory=list)
     fetcher: Fetcher | None = None
     embedder: Embedder | None = None
     index: Index | None = None
     enqueue: Enqueuer | None = None
     clean_executor: Executor | None = None
+    page_cache: object | None = None
+    reranker: object | None = None
+    llm: object | None = None
     _bg: set = field(default_factory=set)
 
     def schedule_index(self, pages: list[Page]) -> None:

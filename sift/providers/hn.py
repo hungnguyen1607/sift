@@ -20,11 +20,18 @@ class HackerNewsProvider(Provider):
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
 
-    async def search(self, query: str, limit: int) -> list[Candidate]:
+    async def search(
+        self, query: str, limit: int, time_range: str | None = None
+    ) -> list[Candidate]:
+        params = {"query": query, "tags": "story", "hitsPerPage": limit}
+        if time_range:
+            from sift.pipeline.fresh import cutoff_epoch
+
+            params["numericFilters"] = f"created_at_i>{cutoff_epoch(time_range, False)}"
         data = await self._get_json(
             self.client,
             "https://hn.algolia.com/api/v1/search",
-            params={"query": query, "tags": "story", "hitsPerPage": limit},
+            params=params,
         )
         out = []
         for hit in data.get("hits", []):

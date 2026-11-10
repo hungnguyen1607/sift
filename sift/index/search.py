@@ -90,6 +90,33 @@ class LocalIndex:
             )
         return {r["url_norm"]: r["content"] for r in rows}
 
+    async def extractable(self, urls: list[str], max_age_days: int = 7) -> dict[str, dict]:
+        """url_norm → {url, title, raw_content, published, updated} for pages
+        indexed recently enough that the stored copy is still fresh."""
+        if not urls:
+            return {}
+        norms = list({normalize_url(u) for u in urls})
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT url_norm, url, title, content, published, updated
+                FROM pages
+                WHERE url_norm = ANY($1::text[]) AND fetched_at > now() - make_interval(days => $2)
+                """,
+                norms,
+                max_age_days,
+            )
+        return {
+            r["url_norm"]: {
+                "url": r["url"],
+                "title": r["title"] or r["url"],
+                "raw_content": r["content"],
+                "published": r["published"],
+                "updated": r["updated"],
+            }
+            for r in rows
+        }
+
     async def known_pages(self, urls: list[str]) -> dict[str, list[Passage]]:
         """url_norm → that page's indexed passages, for the given URLs."""
         if not urls:

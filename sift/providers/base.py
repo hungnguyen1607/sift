@@ -19,7 +19,17 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-Period = Literal["day", "month"]
+Period = Literal["day", "month", "minute", "second", "lifetime"]
+
+# Expiry in seconds for each period's counter key. Lifetime counters never
+# expire; the tiny daily/monthly/minute keys are cleaned up automatically.
+_PERIOD_TTL: dict[Period, int | None] = {
+    "day": 2 * 86400,
+    "month": 40 * 86400,
+    "minute": 120,
+    "second": 3,
+    "lifetime": None,
+}
 
 
 @dataclass(slots=True)
@@ -55,9 +65,16 @@ class Provider(ABC):
     # True for upstream keyword APIs that AND every term; they get a rewritten
     # query without filler words. The local index parses natural language itself.
     keyword_search: bool = True
+    # Fine-grained rate limit (max calls per window in seconds), enforced by the
+    # quota manager on top of the cap. E.g. Brave allows 1 request/s, arXiv 1/3s.
+    rate_limit: tuple[int, int] | None = None
+    # Only queried when the query looks academic (paper, study, theorem, ...).
+    academic_only: bool = False
 
     @abstractmethod
-    async def search(self, query: str, limit: int) -> list[Candidate]: ...
+    async def search(
+        self, query: str, limit: int, time_range: str | None = None
+    ) -> list[Candidate]: ...
 
     def owns(self, url: str) -> bool:
         """True if this provider fetches ``url``'s content through its API
@@ -70,6 +87,20 @@ class Provider(ABC):
     async def _get_json(self, client: httpx.AsyncClient, url: str, **kwargs) -> dict:
         try:
             resp = await client.get(url, **kwargs)
+        except httpx.HTTPError as e:
+            raise ProviderError(f"{self.name}: {type(e).__name__}: {e}") from e
+        if resp.status_code == 429:
+            raise ProviderError(f"{self.name}: rate limited upstream")
+        if resp.status_code >= 400:
+            raise ProviderError(f"{self.name}: HTTP {resp.status_code}")
+        try:
+            return resp.json()
+        except ValueError as e:
+            raise ProviderError(f"{self.name}: non-JSON response: {resp.text[:80]!r}") from e
+
+    async def _post_json(self, client: httpx.AsyncClient, url: str, **kwargs) -> dict:
+        try:
+            resp = await client.post(url, **kwargs)
         except httpx.HTTPError as e:
             raise ProviderError(f"{self.name}: {type(e).__name__}: {e}") from e
         if resp.status_code == 429:
@@ -100,7 +131,17 @@ class QuotaManager:
     @staticmethod
     def period_key(period: Period, now: datetime | None = None) -> str:
         now = now or datetime.now(UTC)
-        return now.strftime("%Y-%m-%d" if period == "day" else "%Y-%m")
+        if period == "lifetime":
+            return "lifetime"
+        return now.strftime(
+            "%Y-%m-%d:%H:%M:%S"
+            if period == "second"
+            else "%Y-%m-%d:%H:%M"
+            if period == "minute"
+            else "%Y-%m-%d"
+            if period == "day"
+            else "%Y-%m"
+        )
 
     def _key(self, provider: str, period: Period, now: datetime | None = None) -> str:
         return f"sift:quota:{provider}:{self.period_key(period, now)}"
@@ -111,7 +152,9 @@ class QuotaManager:
         try:
             used = await self.redis.incr(key)
             if used == 1:
-                await self.redis.expire(key, 2 * 86400 if period == "day" else 40 * 86400)
+                ttl = _PERIOD_TTL[period]
+                if ttl is not None:
+                    await self.redis.expire(key, ttl)
             if cap is not None and used > cap:
                 await self.redis.decr(key)
                 return False
@@ -119,6 +162,18 @@ class QuotaManager:
         except RedisError as e:
             log.warning("quota store unavailable (%s); %s", e, "denying" if cap else "allowing")
             return cap is None
+
+    async def try_rate(self, provider: str, limit: int, window_s: int) -> bool:
+        """Fine-grained fixed-window rate limit (best-effort: the cap above is
+        the fail-closed guarantee; this only smooths bursts)."""
+        key = f"sift:rate:{provider}"
+        try:
+            used = await self.redis.incr(key)
+            if used == 1:
+                await self.redis.expire(key, window_s)
+            return used <= limit
+        except RedisError:
+            return True
 
     async def usage(self, now: datetime | None = None) -> dict[str, dict]:
         out: dict[str, dict] = {}

@@ -41,12 +41,13 @@ does:
 |---|---|---|
 | 1 | ✅ done | Compose, schema, provider interface and quota manager, 4 providers, `/v1/search`, `/v1/usage` |
 | 2 | ✅ done | Fetch, clean, chunk, embed, rank, background index writer; returns passages with exact quotes |
-| 3 | ⬜ next | Fallback tiers, remaining free providers, reranker, `max_tokens`, caches, auth, `/v1/extract` |
-| 4 | ⬜ | Query planning, `/v1/verify`, `fresh_only`, MCP server |
-| 5 | ⬜ | Seed packs, `sift` CLI, LangChain demo, 5-minute self-host |
-| 6 | ⬜ | Evals vs Tavily, load test, deploy, publish |
+| 3 | ✅ done | GitHub/OpenAlex/arXiv, Brave/Tavily/Serper tiers, reranker, `max_tokens`, query+page caches, auth+rate limit, `/v1/extract` |
+| 4 | ✅ done | Query planning, `/v1/verify`, `fresh_only`/`time_range`, optional answer model, MCP server |
+| 5 | ✅ done | Seed-pack format/builder/crawler/loader, devdocs + wikipedia builders, `sift` CLI, LangChain demo, fresh-machine script; full pack data build + VM test are off-box |
+| 6 | ✅ done (tooling) | Eval suite (queries, runner, LLM judge, metrics), k6 load test, deploy configs, CI/CD, publish docs; measuring/deploy/publish are external |
+| — | — | — |
 
-- 197 tests pass (Python 3.12), including Postgres integration tests.
+- 325 tests pass (Python 3.12), including Postgres integration tests.
 - Nothing is committed yet: only `git init` has been run.
 
 ## Setup

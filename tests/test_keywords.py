@@ -24,7 +24,7 @@ async def test_only_keyword_providers_get_rewritten_query(quota_for):
     seen = {}
 
     class Recorder(FakeProvider):
-        async def search(self, query, limit):
+        async def search(self, query, limit, time_range=None):
             seen[self.name] = query
             return []
 

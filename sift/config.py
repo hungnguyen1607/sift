@@ -19,9 +19,24 @@ class Settings(BaseSettings):
     stackexchange_site: str = "stackoverflow"
     marginalia_key: str = "public"
 
+    # Free web-search fallback tiers (an empty key leaves the tier unbuilt).
+    github_token: str | None = None
+    openalex_mailto: str | None = None
+    brave_key: str | None = None
+    tavily_key: str | None = None
+    serper_key: str | None = None
+
+    # Self-hosted SearXNG web backend (no keys, no vendor). Set the URL to enable
+    # it, e.g. "http://searxng:8080". `search_web` controls when it fires:
+    #   "always" — every cache miss (default); "auto" — thin/recency/advanced;
+    #   "off" — never.
+    searxng_url: str | None = None
+    search_web: str = "always"
+
     # Live page fetching (per search request).
     fetch_timeout: float = 3.0
-    fetch_budget: float = 3.0  # whole fetch + clean stage
+    fetch_budget: float = 3.0  # whole fetch + clean stage (advanced)
+    fetch_budget_basic: float = 2.0  # tighter budget for basic searches
     fetch_max_bytes: int = 3_000_000
     fetch_pages_basic: int = 5
     fetch_pages_advanced: int = 10
@@ -39,6 +54,30 @@ class Settings(BaseSettings):
     # Ranking.
     local_candidates: int = 30
     per_site_limit: int = 2
+
+    # Reranker (advanced depth only), loaded lazily in the API process.
+    reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    rerank_passages: int = 15
+    rerank_budget: float = 1.5
+    rerank_tokens: int = 256
+
+    # Caches.
+    query_cache_ttl: int = 24 * 3600
+    query_cache_short_ttl: int = 3600
+    url_cache_ttl: int = 24 * 3600
+
+    # Auth + rate limit.
+    auth: str = "off"  # "off" (anonymous) or "on" (require a Bearer/body key)
+    rpm_limit: int = 60
+    key_cache_ttl: int = 60
+
+    # Optional answer/planner/verify model (off by default; self-hosters point it
+    # at any Anthropic or OpenAI-compatible endpoint).
+    llm_provider: str | None = None  # "anthropic" | "openai"
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str | None = None
+    llm_timeout: float = 4.0
 
     # Set to a comma-separated list to restrict providers, e.g. "local,wikipedia".
     enabled_providers: str | None = None

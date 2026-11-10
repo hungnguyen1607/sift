@@ -16,8 +16,9 @@ class FakeProvider(Provider):
         self.period = period
         self.calls = 0
 
-    async def search(self, query, limit):
+    async def search(self, query, limit, time_range=None):
         self.calls += 1
+        self.last_time_range = time_range
         if self.delay:
             await asyncio.sleep(self.delay)
         if self.error:
@@ -71,13 +72,23 @@ class FakeEmbedder:
 
 
 class FakeIndex:
-    def __init__(self, hits=(), known=None, texts=None):
+    def __init__(self, hits=(), known=None, texts=None, extractable=None):
         self.hits = list(hits)
         self.known = known or {}
         self.texts = texts or {}
+        self.extractable_pages = extractable or {}
 
     async def search(self, query, qvec, limit):
         return self.hits[:limit]
+
+    async def extractable(self, urls, max_age_days=7):
+        from sift.pipeline.candidates import normalize_url
+
+        return {
+            normalize_url(u): self.extractable_pages[normalize_url(u)]
+            for u in urls
+            if normalize_url(u) in self.extractable_pages
+        }
 
     async def known_pages(self, urls):
         from sift.pipeline.candidates import normalize_url

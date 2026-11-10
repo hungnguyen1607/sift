@@ -52,3 +52,49 @@ class SearchResponse(BaseModel):
     cache_hit: bool = False
     cost_usd: float = 0.0
     timings_ms: dict[str, int] = Field(default_factory=dict)
+    tokens_used: int | None = None
+
+
+class ExtractRequest(BaseModel):
+    urls: list[str] = Field(min_length=1, max_length=20)
+
+
+class ExtractResult(BaseModel):
+    url: str
+    title: str
+    raw_content: str
+    published: datetime | None = None
+    updated: datetime | None = None
+
+
+class ExtractFailedResult(BaseModel):
+    url: str
+    error: str
+
+
+class ExtractResponse(BaseModel):
+    results: list[ExtractResult]
+    failed_results: list[ExtractFailedResult]
+    response_time: float
+
+
+class VerifyRequest(BaseModel):
+    claim: str = Field(min_length=1, max_length=2000)
+    max_sources: int = Field(5, ge=1, le=10)
+
+
+class VerifyEvidence(BaseModel):
+    url: str
+    title: str
+    quote: str
+    quote_start: int
+    quote_end: int
+    confidence: float
+
+
+class VerifyResponse(BaseModel):
+    verdict: Literal["supported", "contradicted", "unclear"]
+    confidence: float
+    supporting: list[VerifyEvidence]
+    contradicting: list[VerifyEvidence]
+    response_time: float

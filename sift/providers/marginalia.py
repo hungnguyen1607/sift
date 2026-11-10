@@ -17,7 +17,9 @@ class MarginaliaProvider(Provider):
         self.client = client
         self.key = key
 
-    async def search(self, query: str, limit: int) -> list[Candidate]:
+    async def search(
+        self, query: str, limit: int, time_range: str | None = None
+    ) -> list[Candidate]:
         try:
             resp = await self.client.get(
                 "https://api2.marginalia-search.com/search",
