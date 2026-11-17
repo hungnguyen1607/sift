@@ -18,13 +18,17 @@ _STOPWORDS = frozenset(
     """.split()
 )
 # Keep quoted phrases whole; keep tokens like c++, c#, node.js, gpt-4o, 3.12.
-_TOKEN_RE = re.compile(r'"[^"]+"|[\w][\w.+#\-\'’]*[\w+#]|[\w]')
+_TOKEN_RE = re.compile(r'(?i:site:\S+)|"[^"]+"|[\w][\w.+#\-\'’]*[\w+#]|[\w]')
 
 
 def keyword_query(query: str) -> str:
     tokens = _TOKEN_RE.findall(query)
     kept = [
-        t for t in tokens if t.startswith('"') or re.sub(r"['’]", "", t.lower()) not in _STOPWORDS
+        t
+        for t in tokens
+        if t.startswith('"')
+        or t.lower().startswith("site:")
+        or re.sub(r"['’]", "", t.lower()) not in _STOPWORDS
     ]
     return " ".join(kept) if kept else query.strip()
 
@@ -44,6 +48,7 @@ def looks_academic(query: str) -> bool:
     """Cheap classifier: does this query want research papers? Science providers
     (arXiv, OpenAlex) are only worth querying then."""
     words = {w.strip("'’\".!?,:;").lower() for w in query.split()}
+    words |= {w[:-1] for w in words if len(w) > 3 and w.endswith("s")}  # "papers"
     return bool(words & _ACADEMIC_WORDS) or "et al" in query.lower()
 
 

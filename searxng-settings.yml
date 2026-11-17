@@ -12,3 +12,16 @@ search:
   formats:
     - html
     - json
+
+# More general web engines than SearXNG's defaults, so one engine rate-limiting
+# Sift (Brave and Google suspend for minutes after a burst; DuckDuckGo shows a
+# CAPTCHA) doesn't leave web, people and shopping searches empty. Merged by name
+# into the default engine list. (google, qwant and yep were tried and are
+# blocked from typical home/server IPs, so they stay off.)
+engines:
+  - name: bing
+    disabled: false
+  - name: yahoo
+    disabled: false
+  - name: mwmbl
+    disabled: false

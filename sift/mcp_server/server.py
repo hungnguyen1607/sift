@@ -54,16 +54,22 @@ async def search_impl(
     depth: str = "advanced",
     include_domains: list[str] | None = None,
     fresh_only: bool = False,
+    vertical: str = "auto",
+    max_results: int | None = None,
 ) -> str:
+    body = {
+        "query": query,
+        "max_tokens": max_tokens,
+        "search_depth": depth,
+        "include_domains": include_domains or [],
+        "fresh_only": fresh_only,
+        "vertical": vertical,
+    }
+    if max_results:
+        body["max_results"] = max_results
     resp = await client.post(
         "/v1/search",
-        json={
-            "query": query,
-            "max_tokens": max_tokens,
-            "search_depth": depth,
-            "include_domains": include_domains or [],
-            "fresh_only": fresh_only,
-        },
+        json=body,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -72,8 +78,12 @@ async def search_impl(
     lines = []
     for i, r in enumerate(data["results"], 1):
         lines.append(f"[{i}] {r['title']} — {r['url']} ({_date(r)})")
+        if r.get("fields"):
+            lines.append("    " + "; ".join(f"{k}: {v}" for k, v in r["fields"].items()))
         lines.append(f"> {r['content']}")
-    info = "providers: " + ", ".join(data.get("providers_used", []))
+    info = f"vertical: {data.get('vertical', 'web')}; providers: " + ", ".join(
+        data.get("providers_used", [])
+    )
     if data.get("cache_hit"):
         info += " (cache hit)"
     lines.append(info)
@@ -111,12 +121,23 @@ async def search(
     depth: str = "advanced",
     include_domains: list[str] | None = None,
     fresh_only: bool = False,
+    vertical: str = "auto",
+    max_results: int | None = None,
 ) -> str:
-    """Search the web for passages that answer `query`. Cite results as [n] with
-    their URL. Set `max_tokens` to bound the total returned text; use
-    `fresh_only` for recent information only."""
+    """Search the web for `query`. Cite results as [n] with their URL. Set
+    `max_tokens` to bound the total returned text; use `fresh_only` for recent
+    information only.
+
+    `vertical` picks the kind of result ("auto" detects it): web, news, travel,
+    academic, code (quoted passages), or people, videos, social, jobs, shopping,
+    places (lists with structured fields such as headline, channel, salary,
+    price, address). Lists come from search snippets, so treat them as leads to
+    check. `max_results` (up to 100 for lists) sets how many entries you want;
+    "find 30 …" in the query works too."""
     async with _client() as client:
-        return await search_impl(client, query, max_tokens, depth, include_domains, fresh_only)
+        return await search_impl(
+            client, query, max_tokens, depth, include_domains, fresh_only, vertical, max_results
+        )
 
 
 @mcp.tool()

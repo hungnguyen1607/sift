@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -150,9 +151,15 @@ async def gather_candidates(
     depth: str = "basic",
     time_range: str | None = None,
     search_web: str = "auto",
+    extra: Awaitable[dict[str, list[Candidate]]] | None = None,
+    extra_budget_s: float | None = None,
 ) -> CandidateResult:
+    """``extra`` is an already-started search of a vertical's own sources
+    (SearXNG categories, job feeds, …); its lists join the merge as if they
+    were more providers."""
     skipped: dict[str, str] = {}
     timings: dict[str, int] = {}
+    extra_task = asyncio.ensure_future(extra) if extra is not None else None
     keywords = keyword_query(query)
     fallbacks = [] if search_web == "off" else (fallbacks or [])
 
@@ -230,8 +237,21 @@ async def gather_candidates(
             if fb_items:
                 ranked[fb_name] = fb_items
 
+    extra_names: list[str] = []
+    if extra_task is not None:
+        try:
+            lists = await asyncio.wait_for(extra_task, timeout=extra_budget_s or budget_s + 1.0)
+        except TimeoutError:
+            skipped["vertical"] = "timeout"
+            lists = {}
+        for n, items in lists.items():
+            items = filter_domains(items)
+            if items:
+                ranked[n] = items
+                extra_names.append(n)
+
     # Keep provider order stable for the response, regardless of finish order.
-    order = [p.name for p in providers] + [p.name for p in fallbacks]
+    order = [p.name for p in providers] + [p.name for p in fallbacks] + extra_names
     ranked = {n: ranked[n] for n in order if n in ranked}
     return CandidateResult(
         candidates=rrf_merge(ranked),

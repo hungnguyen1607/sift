@@ -32,25 +32,25 @@ def query_cache_key(
     time_range: str | None,
     include_raw_content: bool,
     include_answer: bool,
+    vertical: str = "auto",
 ) -> str:
     """A canonical key: lowercase, whitespace-collapsed, domain lists sorted,
     auth fields (there are none in the model) excluded."""
-    norm = json.dumps(
-        {
-            "q": " ".join(query.lower().split()),
-            "mr": max_results,
-            "mt": max_tokens,
-            "d": depth,
-            "in": sorted(d.strip().lower() for d in include_domains),
-            "ex": sorted(d.strip().lower() for d in exclude_domains),
-            "fo": fresh_only,
-            "tr": time_range,
-            "rc": include_raw_content,
-            "ans": include_answer,
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    )
+    fields = {
+        "q": " ".join(query.lower().split()),
+        "mr": max_results,
+        "mt": max_tokens,
+        "d": depth,
+        "in": sorted(d.strip().lower() for d in include_domains),
+        "ex": sorted(d.strip().lower() for d in exclude_domains),
+        "fo": fresh_only,
+        "tr": time_range,
+        "rc": include_raw_content,
+        "ans": include_answer,
+    }
+    if vertical != "auto":  # leave existing keys unchanged
+        fields["v"] = vertical
+    norm = json.dumps(fields, sort_keys=True, separators=(",", ":"))
     return QUERY_PREFIX + hashlib.sha256(norm.encode()).hexdigest()
 
 

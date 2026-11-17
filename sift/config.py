@@ -54,6 +54,14 @@ class Settings(BaseSettings):
     # Ranking.
     local_candidates: int = 30
     per_site_limit: int = 2
+    answer_max_results: int = 20
+    # List verticals (people, videos, jobs, …): snippet-only entries, paged.
+    listing_candidates: int = 20  # per provider
+    listing_max_results: int = 100
+    listing_max_pages: int = 5  # SearXNG result pages per source
+    listing_budget: float = 6.0  # seconds for each of a list vertical's sources
+    vertical_budget: float = 4.0  # same, for the sources of news/travel (they rely on them)
+    vertical_extra_budget: float = 2.5  # optional extra sources (academic, code)
 
     # Index growth bound: evict least-recently-used pages beyond `max_pages`
     # and/or pages unused for `page_retention_days`. 0 disables that rule.

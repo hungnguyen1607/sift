@@ -39,6 +39,7 @@ def search(
     max_results: int = 5,
     fresh_only: bool = False,
     base_url: str | None = None,
+    vertical: str = "auto",
 ) -> dict:
     """Full Sift response: results (with quote offsets), providers, timings."""
     return _post(
@@ -49,6 +50,7 @@ def search(
             "search_depth": depth,
             "max_results": max_results,
             "fresh_only": fresh_only,
+            "vertical": vertical,
         },
         base_url,
     )

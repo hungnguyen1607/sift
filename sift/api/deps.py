@@ -36,6 +36,8 @@ class Engine:
     providers: list[Provider]
     quota: QuotaManager
     fallbacks: list[Provider] = field(default_factory=list)
+    # Providers only some verticals use (job feeds, travel guides), by name.
+    vertical_providers: dict[str, Provider] = field(default_factory=dict)
     fetcher: Fetcher | None = None
     embedder: Embedder | None = None
     index: Index | None = None

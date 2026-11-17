@@ -252,3 +252,46 @@ async def test_search_touches_returned_pages_for_lru():
     out = await run_search(e, "reverse a list python")
     await asyncio.sleep(0.05)  # let the background touch task run
     assert {r.passage.page.url for r in out.results} <= set(idx.touched)
+
+
+def _profiles(n):
+    return [
+        Candidate(
+            f"https://ca.linkedin.com/in/person-{i}",
+            f"Person {i} - Software Engineer - Shopify | LinkedIn",
+            f"Software Engineer at Shopify. Education: Concordia University, MSc. Montreal {i}",
+            "searxng",
+        )
+        for i in range(n)
+    ]
+
+
+class _ExplodingFetcher:
+    async def fetch(self, url):
+        raise AssertionError(f"listing mode must not fetch {url}")
+
+
+async def test_listing_returns_many_snippets_from_one_site_without_fetching():
+    other = Candidate(
+        "https://news.ycombinator.com/item?id=1", "Shopify", "Shopify hiring thread", "hn"
+    )
+    e = engine([FakeProvider("searxng", _profiles(12)), FakeProvider("hn", [other])])
+    e.fetcher = _ExplodingFetcher()
+    out = await run_search(e, "site:linkedin.com/in Concordia Shopify", max_results=10)
+    assert out.vertical == "people"
+    assert len(out.results) == 10
+    assert all("linkedin.com" in r.passage.page.url for r in out.results)
+    assert all(r.passage.page.origin == "snippet" for r in out.results)
+    assert out.results[0].passage.page.title.endswith("Shopify")  # " | LinkedIn" stripped
+    assert "fetch" not in out.timings_ms
+
+
+async def test_vertical_can_be_forced_and_ordinary_queries_are_unchanged():
+    e = engine([FakeProvider("searxng", _profiles(6))])
+    e.fetcher = _ExplodingFetcher()
+    forced = await run_search(e, "Concordia Shopify engineers", vertical="site", max_results=6)
+    assert forced.vertical == "site" and len(forced.results) == 6
+
+    e2 = engine([FakeProvider("stackexchange", [so_candidate()])])
+    normal = await run_search(e2, "how do I reverse a list in python")
+    assert normal.vertical == "web"

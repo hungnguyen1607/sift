@@ -22,6 +22,8 @@ class Page:
     # page couldn't be fetched, so the provider snippet stands in for it.
     origin: Origin = "live"
     sources: list[str] = field(default_factory=list)
+    # Structured data for vertical results (channel, price, address, …).
+    fields: dict | None = None
 
 
 @dataclass(slots=True)

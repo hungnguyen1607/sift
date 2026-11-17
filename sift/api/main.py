@@ -21,10 +21,13 @@ from sift.pipeline.embed import FastEmbedder
 from sift.pipeline.fetch import Fetcher
 from sift.pipeline.llm import LLM
 from sift.providers import (
+    ArbeitnowProvider,
     ArxivProvider,
     BraveProvider,
     GitHubProvider,
+    GitHubUsersProvider,
     HackerNewsProvider,
+    HNJobsProvider,
     MarginaliaProvider,
     OpenAlexProvider,
     Provider,
@@ -34,10 +37,31 @@ from sift.providers import (
     StackExchangeProvider,
     TavilyProvider,
     WikipediaProvider,
+    WikivoyageProvider,
 )
 from sift.worker import queue
 
 log = logging.getLogger("sift")
+
+
+def build_vertical_providers(
+    settings: Settings, http: httpx.AsyncClient, providers: list[Provider]
+) -> dict[str, Provider]:
+    """Sources only some verticals use: job feeds (jobs), travel guides
+    (travel), and Hacker News reused for social searches. All free, no keys."""
+    out: dict[str, Provider] = {
+        "hn_jobs": HNJobsProvider(http),
+        "arbeitnow": ArbeitnowProvider(http),
+        "wikivoyage": WikivoyageProvider(http, settings.wikipedia_lang),
+        "github_users": GitHubUsersProvider(http, settings.github_token),
+    }
+    hn = next((p for p in providers if p.name == "hn"), None)
+    if hn is not None:
+        out["hn"] = hn
+    if settings.enabled_providers:
+        wanted = {n.strip() for n in settings.enabled_providers.split(",")}
+        out = {k: p for k, p in out.items() if p.name in wanted}
+    return out
 
 
 def build_providers(
@@ -97,11 +121,13 @@ async def default_lifespan(app: FastAPI):
     async def enqueue(kind: str, payload: dict):
         return await queue.enqueue(pool, kind, payload)
 
-    all_providers = [*providers, *fallbacks]
+    vertical_providers = build_vertical_providers(settings, http, providers)
+    all_providers = [*providers, *fallbacks, *vertical_providers.values()]
     app.state.engine = Engine(
         settings=settings,
         providers=providers,
         fallbacks=fallbacks,
+        vertical_providers=vertical_providers,
         quota=QuotaManager(redis, {p.name: (p.cap, p.period) for p in all_providers}),
         fetcher=Fetcher(
             http, redis, timeout=settings.fetch_timeout, max_bytes=settings.fetch_max_bytes

@@ -32,6 +32,7 @@ def _build_response(req: SearchRequest, out, elapsed: float) -> SearchResponse:
                 quote_start=p.start if exact else None,
                 quote_end=p.end if exact else None,
                 section=p.heading,
+                fields=page.fields,
                 raw_content=out.page_texts.get(normalize_url(page.url))
                 if req.include_raw_content
                 else None,
@@ -42,6 +43,7 @@ def _build_response(req: SearchRequest, out, elapsed: float) -> SearchResponse:
         answer=out.answer,
         results=results,
         sub_queries=out.sub_queries,
+        vertical=out.vertical,
         response_time=round(elapsed, 3),
         providers_used=out.providers_used,
         providers_skipped=out.providers_skipped,
@@ -67,6 +69,7 @@ async def search(req: SearchRequest, request: Request, engine: EngineDep) -> Sea
         time_range=req.time_range,
         include_raw_content=req.include_raw_content,
         include_answer=req.include_answer,
+        vertical=req.vertical,
     )
     ttl = (
         settings.query_cache_short_ttl
@@ -100,11 +103,13 @@ async def search(req: SearchRequest, request: Request, engine: EngineDep) -> Sea
         fresh_only=req.fresh_only,
         time_range=req.time_range,
         include_answer=req.include_answer,
+        vertical=req.vertical,
     )
     if req.include_answer and out.answer is None and not getattr(engine.llm, "configured", False):
         out.providers_skipped["answer"] = "no LLM configured"
     resp = _build_response(req, out, time.perf_counter() - t0)
-    await qcache.set(cache_key, resp.model_dump(mode="json"), ttl)
+    if resp.results:  # an empty answer is usually a transient upstream failure
+        await qcache.set(cache_key, resp.model_dump(mode="json"), ttl)
     if is_first:
         await qcache.release_lock(cache_key)
     return resp

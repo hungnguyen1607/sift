@@ -12,7 +12,8 @@ class SearchRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     query: str = Field(min_length=1, max_length=2000)
-    max_results: int = Field(5, ge=1, le=20)
+    # Up to 20 for answer searches; list verticals (people, jobs, …) go to 100.
+    max_results: int = Field(5, ge=1, le=100)
     max_tokens: int | None = Field(None, ge=50, le=50_000)
     search_depth: Literal["basic", "advanced"] = "basic"
     include_domains: list[str] = Field(default_factory=list)
@@ -21,6 +22,25 @@ class SearchRequest(BaseModel):
     time_range: Literal["day", "week", "month", "year", "d", "w", "m", "y"] | None = None
     include_raw_content: bool = False
     include_answer: bool = False
+    # Which kind of result: "auto" detects it from the query. Answer verticals
+    # (web, news, travel, academic, code) quote fetched pages; list verticals
+    # (people, videos, social, jobs, shopping, places, site) return many entries
+    # from search snippets, with structured `fields`.
+    vertical: Literal[
+        "auto",
+        "web",
+        "news",
+        "travel",
+        "academic",
+        "code",
+        "people",
+        "videos",
+        "social",
+        "jobs",
+        "shopping",
+        "places",
+        "site",
+    ] = "auto"
 
 
 class SearchResult(BaseModel):
@@ -38,6 +58,10 @@ class SearchResult(BaseModel):
     quote_end: int | None = None
     section: str | None = None
     raw_content: str | None = None
+    # Structured data for vertical results: channel/duration (videos), name/
+    # headline/company (people), salary/location (jobs), price/currency
+    # (shopping), address/lat/lon (places). Null for plain web results.
+    fields: dict | None = None
 
 
 class SearchResponse(BaseModel):
@@ -46,6 +70,7 @@ class SearchResponse(BaseModel):
     images: list[str] = Field(default_factory=list)
     results: list[SearchResult]
     sub_queries: list[str] | None = None
+    vertical: str = "web"
     response_time: float
     providers_used: list[str]
     providers_skipped: dict[str, str]

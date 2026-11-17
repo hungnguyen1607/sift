@@ -33,3 +33,9 @@ async def test_only_keyword_providers_get_rewritten_query(quota_for):
     local.keyword_search = False
     await gather_candidates("how do I use jsonb", [upstream, local], quota_for([upstream, local]))
     assert seen == {"wikipedia": "use jsonb", "local": "how do I use jsonb"}
+
+
+def test_keyword_query_keeps_site_operator():
+    assert keyword_query("site:linkedin.com/in who is at Shopify") == (
+        "site:linkedin.com/in Shopify"
+    )
