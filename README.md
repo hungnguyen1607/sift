@@ -1,5 +1,7 @@
 # Sift
 Hi i forgot to pulish my project so here it is 
+
+
 A self-hosted web-search engine for AI agents. Returns the best web passages with exact quote citations, inside a token budget — free, no vendor keys.
 
 ## How it works
