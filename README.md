@@ -1,5 +1,5 @@
 # Sift
-~Cute project for anyone needing web search engine for their ai agents~
+Cute little project for anyone needing web search engine for their ai agents
 
 A self-hosted web-search engine for AI agents. Returns the best web passages with exact quote citations, inside a token budget — free, no vendor keys.
 
