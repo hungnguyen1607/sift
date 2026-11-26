@@ -1,9 +1,9 @@
 from sift.api.deps import Engine
 from sift.config import Settings
 from sift.pipeline.keywords import has_recency_words, looks_academic
+from sift.pipeline.materialize import _rerank_top
 from sift.pipeline.models import Page, Passage
 from sift.pipeline.rank import Ranked
-from sift.pipeline.search import _rerank_top
 
 
 def ranked(items):

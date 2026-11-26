@@ -49,6 +49,16 @@ def domain_matches(url: str, domains: list[str]) -> bool:
     return any(host == d or host.endswith("." + d) for d in wanted)
 
 
+async def try_provider(quota: QuotaManager, p: Provider) -> str | None:
+    """Claim a provider's per-minute rate and a quota slot before calling it.
+    Returns None when both are free (go ahead), else why it must be skipped."""
+    if p.rate_limit is not None and not await quota.try_rate(p.name, *p.rate_limit):
+        return "rate limited"
+    if not await quota.try_acquire(p.name):
+        return "quota exhausted"
+    return None
+
+
 @dataclass(slots=True)
 class MergedCandidate:
     candidate: Candidate
@@ -121,11 +131,9 @@ async def _run_fallback(
     moves to the next tier."""
     skipped: dict[str, str] = {}
     for p in fallbacks:
-        if p.rate_limit is not None and not await quota.try_rate(p.name, *p.rate_limit):
-            skipped[p.name] = "rate limited"
-            continue
-        if not await quota.try_acquire(p.name):
-            skipped[p.name] = "quota exhausted"
+        reason = await try_provider(quota, p)
+        if reason is not None:
+            skipped[p.name] = reason
             continue
         try:
             items = await p.search(
@@ -153,10 +161,15 @@ async def gather_candidates(
     search_web: str = "auto",
     extra: Awaitable[dict[str, list[Candidate]]] | None = None,
     extra_budget_s: float | None = None,
+    hedge_s: float | None = None,
 ) -> CandidateResult:
     """``extra`` is an already-started search of a vertical's own sources
     (SearXNG categories, job feeds, …); its lists join the merge as if they
-    were more providers."""
+    were more providers.
+
+    ``hedge_s``: if the providers that answered within this many seconds look
+    thin, start the web backend then, alongside the slower providers, instead
+    of only after all of them (saves up to ``budget_s - hedge_s``)."""
     skipped: dict[str, str] = {}
     timings: dict[str, int] = {}
     extra_task = asyncio.ensure_future(extra) if extra is not None else None
@@ -177,11 +190,9 @@ async def gather_candidates(
         if p.academic_only and not looks_academic(query):
             skipped[p.name] = "not academic"
             continue
-        if p.rate_limit is not None and not await quota.try_rate(p.name, *p.rate_limit):
-            skipped[p.name] = "rate limited"
-            continue
-        if not await quota.try_acquire(p.name):
-            skipped[p.name] = "quota exhausted"
+        reason = await try_provider(quota, p)
+        if reason is not None:
+            skipped[p.name] = reason
             continue
         tasks[asyncio.create_task(run(p), name=f"provider:{p.name}")] = p
 
@@ -198,7 +209,23 @@ async def gather_candidates(
             name="fallback",
         )
 
-    done, pending = await asyncio.wait(tasks, timeout=budget_s) if tasks else (set(), set())
+    if tasks and fallbacks and not early and hedge_s is not None and hedge_s < budget_s:
+        t_start = time.perf_counter()
+        first, rest = await asyncio.wait(tasks, timeout=hedge_s)
+        if rest:  # someone is still running: decide on what's in so far
+            so_far = {
+                tasks[t].name: t.result() for t in first if t.exception() is None and t.result()
+            }
+            if _thin(list(rrf_merge(so_far)), query):
+                early = True
+                fb_task = asyncio.create_task(
+                    _run_fallback(fallbacks, query, keywords, per_provider, quota, time_range),
+                    name="fallback",
+                )
+        remaining = max(0.0, budget_s - (time.perf_counter() - t_start))
+        done, pending = await asyncio.wait(tasks, timeout=remaining) if rest else (first, rest)
+    else:
+        done, pending = await asyncio.wait(tasks, timeout=budget_s) if tasks else (set(), set())
     for t in pending:
         t.cancel()
         skipped[tasks[t].name] = f"timeout after {budget_s}s"

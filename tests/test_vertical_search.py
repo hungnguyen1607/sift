@@ -20,7 +20,7 @@ class FakeSearX(SearXNGProvider):
         self.queries: list[tuple[str, str]] = []
 
     async def search_category(
-        self, query, categories, limit, *, page=1, time_range=None, http_timeout=None
+        self, query, categories, limit, *, page=1, time_range=None, http_timeout=None, **kw
     ):
         self.queries.append((query, categories))
         if self.error:
@@ -29,7 +29,7 @@ class FakeSearX(SearXNGProvider):
 
 
 class NoFetch:
-    async def fetch(self, url):
+    async def fetch(self, url, accept=()):
         raise AssertionError(f"must not fetch {url}")
 
 
@@ -38,7 +38,7 @@ class PageFetcher:
         self.pages = pages
         self.fetched = []
 
-    async def fetch(self, url):
+    async def fetch(self, url, accept=()):
         self.fetched.append(url)
         if url not in self.pages:
             raise FetchError("disallowed by robots.txt")
@@ -113,6 +113,35 @@ async def test_people_rank_full_matches_first_and_report_shortfall():
     assert sx.queries[0] == ("Concordia Shopify site:linkedin.com/in", "general")
 
 
+async def test_empty_auto_vertical_falls_back_to_web():
+    # "remote python jobs" auto-detects jobs, but the job sources find nothing.
+    # A search engine must still return something: retry as plain web.
+    sx = FakeSearX({})  # jobs sites + categories all empty
+    web = FakeProvider(
+        "web",
+        [
+            c(f"https://ex.dev/{i}", "remote python jobs guide", "remote python jobs")
+            for i in range(5)
+        ],
+    )
+    e = engine(sx, providers=[web])
+    out = await run_search(e, "remote python jobs montreal")
+    assert out.vertical == "web"
+    assert out.fell_back_to_web is True
+    assert out.detected_vertical == "jobs"
+    assert out.results and web.calls == 1
+
+
+async def test_agent_forced_vertical_does_not_fall_back_to_web():
+    sx = FakeSearX({})
+    web = FakeProvider("web", [c("https://ex.dev/1", "jobs", "jobs")])
+    e = engine(sx, providers=[web])
+    out = await run_search(e, "remote python jobs", vertical="jobs")
+    assert out.vertical == "jobs"
+    assert out.fell_back_to_web is False
+    assert out.results == [] and web.calls == 0
+
+
 async def test_jobs_merge_feeds_and_read_json_ld_from_ats_pages():
     ld = (
         '<script type="application/ld+json">{"@type": "JobPosting", "title": "Backend Dev",'
@@ -182,6 +211,48 @@ async def test_shopping_reads_prices_and_applies_the_cap():
     assert by_url["https://shop-a.example/k2"].fields["price"] == 89.0
     assert "price_checked_at" in by_url["https://shop-a.example/k2"].fields
     assert "https://amazon.example/k" in by_url  # robots-blocked: kept, no price
+
+
+async def test_shopping_listing_pages_become_priced_products():
+    listing = (
+        '<script type="application/ld+json">{"@type": "ItemList", "itemListElement": ['
+        '{"@type": "ListItem", "position": 1, "item": {"@type": "Product", "name": "Board A",'
+        ' "url": "/p/board-a", "offers": {"price": "79.99", "priceCurrency": "USD"}}},'
+        '{"@type": "ListItem", "position": 2, "item": {"@type": "Product", "name": "Board B",'
+        ' "url": "/p/board-b", "offers": {"price": "149.00", "priceCurrency": "USD"}}}'
+        "]}</script>"
+    )
+    sx = FakeSearX(
+        {
+            "general": [
+                c("https://store.example/c/keyboards", "Mechanical keyboards", "keyboards"),
+                c("https://en.wikipedia.org/wiki/Keyboard", "Keyboard", "keyboard history"),
+                c("https://cheap.example/kb", "Mechanical keyboard $59.99", "free shipping"),
+            ]
+        }
+    )
+    fetcher = PageFetcher({"https://store.example/c/keyboards": listing})
+    out = await run_search(engine(sx, fetcher=fetcher), "buy mechanical keyboard under $100")
+    by_url = {r.passage.page.url: r.passage.page.fields for r in out.results}
+    a = by_url["https://store.example/p/board-a"]
+    assert a["price"] == 79.99 and a["listed_on"] == "https://store.example/c/keyboards"
+    assert "https://store.example/p/board-b" not in by_url  # over the cap
+    assert by_url["https://cheap.example/kb"]["price_source"] == "snippet"
+    assert "https://en.wikipedia.org/wiki/Keyboard" not in fetcher.fetched
+    urls = [r.passage.page.url for r in out.results]
+    assert urls.index("https://en.wikipedia.org/wiki/Keyboard") > urls.index(
+        "https://cheap.example/kb"
+    )
+    # the extra "<item> price" search ran alongside the plain one
+    assert ("mechanical keyboard price", "general") in sx.queries
+
+
+async def test_shopping_snippet_amount_from_the_query_is_not_a_price():
+    sx = FakeSearX(
+        {"general": [c("https://shop.example/c", "Keyboards under $100", "best boards")]}
+    )
+    out = await run_search(engine(sx), "mechanical keyboard under $100")
+    assert "price" not in (out.results[0].passage.page.fields or {})
 
 
 async def test_places_come_from_the_map_category():

@@ -50,3 +50,15 @@ def test_select_drops_near_duplicates():
     ]
     urls = [r.passage.page.url for r in select(_ranked(ps), 5)]
     assert urls == ["https://a.com", "https://c.com"]
+
+
+def test_select_one_passage_per_page_when_asked():
+    page = Page("https://news.dev/a", "t", "x", "x")
+    two = [
+        Passage(page, "first quote about the launch window today", 0, 10),
+        Passage(page, "second quote on a different detail entirely", 20, 30),
+    ]
+    ps = [*two, P("https://news.dev/b", "another story about something else")]
+    urls = [r.passage.page.url for r in select(_ranked(ps), 5, per_site=3, one_per_url=True)]
+    assert urls == ["https://news.dev/a", "https://news.dev/b"]
+    assert len(select(_ranked(ps), 5, per_site=3)) == 3  # default unchanged

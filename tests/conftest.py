@@ -119,3 +119,13 @@ class RecordingQueue:
 
     async def __call__(self, kind, payload):
         self.jobs.append((kind, payload))
+
+
+@pytest.fixture(autouse=True)
+def _fresh_settings():
+    """Tests that monkeypatch SIFT_* env vars must not leak cached settings."""
+    from sift.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

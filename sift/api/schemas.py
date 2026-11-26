@@ -71,10 +71,18 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     sub_queries: list[str] | None = None
     vertical: str = "web"
+    # Set when auto-detection picked a list vertical that found nothing and the
+    # query was retried as web: `vertical` is then "web" and this is the guess.
+    detected_vertical: str | None = None
+    fell_back_to_web: bool = False
     response_time: float
     providers_used: list[str]
     providers_skipped: dict[str, str]
     cache_hit: bool = False
+    # True when live search found nothing (engines rate-limiting, an outage) and
+    # this is the last good response for the query, made stale_age_s ago.
+    stale: bool = False
+    stale_age_s: int | None = None
     cost_usd: float = 0.0
     timings_ms: dict[str, int] = Field(default_factory=dict)
     tokens_used: int | None = None

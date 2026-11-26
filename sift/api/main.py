@@ -20,6 +20,7 @@ from sift.pipeline.cache import PageCache, QueryCache
 from sift.pipeline.embed import FastEmbedder
 from sift.pipeline.fetch import Fetcher
 from sift.pipeline.llm import LLM
+from sift.pipeline.vertical_knn import VerticalKNN
 from sift.providers import (
     ArbeitnowProvider,
     ArxivProvider,
@@ -44,6 +45,13 @@ from sift.worker import queue
 log = logging.getLogger("sift")
 
 
+def _enabled_names(settings: Settings) -> set[str] | None:
+    """The SIFT_ENABLED_PROVIDERS allow-list, or None when unset (all enabled)."""
+    if not settings.enabled_providers:
+        return None
+    return {n.strip() for n in settings.enabled_providers.split(",")}
+
+
 def build_vertical_providers(
     settings: Settings, http: httpx.AsyncClient, providers: list[Provider]
 ) -> dict[str, Provider]:
@@ -58,8 +66,8 @@ def build_vertical_providers(
     hn = next((p for p in providers if p.name == "hn"), None)
     if hn is not None:
         out["hn"] = hn
-    if settings.enabled_providers:
-        wanted = {n.strip() for n in settings.enabled_providers.split(",")}
+    wanted = _enabled_names(settings)
+    if wanted is not None:
         out = {k: p for k, p in out.items() if p.name in wanted}
     return out
 
@@ -80,7 +88,14 @@ def build_providers(
 
     fallbacks: list[Provider] = []
     if settings.searxng_url:
-        fallbacks.append(SearXNGProvider(http, settings.searxng_url))
+        fallbacks.append(
+            SearXNGProvider(
+                http,
+                settings.searxng_url,
+                engine_timeout=settings.searxng_engine_timeout,
+                category_engine_timeout=settings.searxng_category_engine_timeout,
+            )
+        )
     if settings.brave_key:
         fallbacks.append(BraveProvider(http, settings.brave_key))
     if settings.tavily_key:
@@ -88,8 +103,8 @@ def build_providers(
     if settings.serper_key:
         fallbacks.append(SerperProvider(http, settings.serper_key))
 
-    if settings.enabled_providers:
-        wanted = {n.strip() for n in settings.enabled_providers.split(",")}
+    wanted = _enabled_names(settings)
+    if wanted is not None:
         providers = [p for p in providers if p.name in wanted]
         fallbacks = [p for p in fallbacks if p.name in wanted]
     return providers, fallbacks
@@ -122,6 +137,9 @@ async def default_lifespan(app: FastAPI):
         return await queue.enqueue(pool, kind, payload)
 
     vertical_providers = build_vertical_providers(settings, http, providers)
+    vertical_knn = VerticalKNN(embedder) if settings.vertical_knn else None
+    if vertical_knn is not None:
+        vertical_knn.warm()  # embeds the examples in the background
     all_providers = [*providers, *fallbacks, *vertical_providers.values()]
     app.state.engine = Engine(
         settings=settings,
@@ -144,6 +162,7 @@ async def default_lifespan(app: FastAPI):
             settings.llm_model,
             settings.llm_timeout,
         ),
+        vertical_knn=vertical_knn,
     )
     app.state.redis = redis
     app.state.key_store = KeyStore(pool, ttl=settings.key_cache_ttl)

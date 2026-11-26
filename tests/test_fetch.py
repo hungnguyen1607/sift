@@ -94,3 +94,30 @@ async def test_timeout_is_a_fetch_error(fetcher):
     respx.get("https://a.com/slow").mock(side_effect=httpx.ReadTimeout("slow"))
     with pytest.raises(FetchError, match="timeout"):
         await fetcher.fetch("https://a.com/slow")
+
+
+@respx.mock
+async def test_429_backs_off_the_whole_site(fetcher):
+    respx.get("https://shop.com/robots.txt").respond(404)
+    first = respx.get("https://shop.com/products/a").respond(429, headers={"Retry-After": "120"})
+    other = respx.get("https://shop.com/products/b").respond(text="<p>b</p>", headers=HTML)
+    respx.get("https://elsewhere.com/robots.txt").respond(404)
+    respx.get("https://elsewhere.com/x").respond(text="<p>x</p>", headers=HTML)
+    with pytest.raises(FetchError, match="429"):
+        await fetcher.fetch("https://shop.com/products/a")
+    with pytest.raises(FetchError, match="slow down"):
+        await fetcher.fetch("https://shop.com/products/b")
+    assert first.call_count == 1 and not other.called
+    assert 0 < await fetcher.redis.ttl("sift:hostwait:shop.com") <= 120
+    await fetcher.fetch("https://elsewhere.com/x")  # other sites are unaffected
+
+
+def test_retry_after_parsing():
+    from sift.pipeline.fetch import _retry_after
+
+    assert _retry_after("120") == 120
+    assert _retry_after("5") == 60  # clamped
+    assert _retry_after("999999") == 3600
+    assert _retry_after(None) == 600
+    assert _retry_after("Wed, 21 Oct 2015 07:28:00 GMT") == 60  # in the past
+    assert _retry_after("soon") == 600

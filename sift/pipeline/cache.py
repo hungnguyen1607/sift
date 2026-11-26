@@ -16,6 +16,7 @@ from redis.exceptions import RedisError
 QUERY_PREFIX = "sift:qcache:"
 PAGE_PREFIX = "sift:pcache:"
 LOCK_PREFIX = "sift:qlock:"
+STALE_PREFIX = "sift:qstale:"
 HITS_KEY = "sift:cache:hits"
 MISSES_KEY = "sift:cache:misses"
 
@@ -91,6 +92,29 @@ class QueryCache:
             await self.redis.set(key, _compress(payload), ex=ttl)
         except RedisError:
             pass
+
+    async def set_stale(self, key: str, payload: dict, ttl: int, now: float) -> None:
+        """Keep the last good response (with when it was made) as a fallback."""
+        try:
+            await self.redis.set(
+                STALE_PREFIX + key, _compress({"at": now, "resp": payload}), ex=ttl
+            )
+        except RedisError:
+            pass
+
+    async def get_stale(self, key: str) -> tuple[dict, float] | None:
+        """The last good response and the time it was made, if any."""
+        try:
+            raw = await self.redis.get(STALE_PREFIX + key)
+        except RedisError:
+            return None
+        if raw is None:
+            return None
+        try:
+            d = _decompress(raw)
+            return d["resp"], float(d["at"])
+        except (zlib.error, ValueError, KeyError, TypeError):
+            return None
 
     async def acquire_lock(self, key: str, ttl: int = 10) -> bool:
         """Single-flight: True means we won the lock and should compute."""

@@ -89,3 +89,38 @@ async def test_domain_filters(quota_for):
     ]
     exc = await gather_candidates("q", [p], q, exclude_domains=["w3schools.com"])
     assert "https://w3schools.com/b" not in [m.candidate.url for m in exc.candidates]
+
+
+async def test_hedge_starts_web_backend_while_slow_provider_runs(quota_for):
+    """A thin fast provider plus a slow one: the web backend starts at the
+    hedge point, so the whole call takes ~max(slow, hedge + web), not slow + web."""
+    import time
+
+    fast = FakeProvider("fast", [cand("https://a.dev/1", "fast")])
+    slow = FakeProvider("slow", [cand("https://b.dev/1", "slow")], delay=0.4)
+    web = FakeProvider("web", [cand(f"https://w.dev/{i}", "web") for i in range(5)], delay=0.3)
+    quota = quota_for([fast, slow, web])
+    t0 = time.perf_counter()
+    res = await gather_candidates(
+        "unusual query words", [fast, slow], quota, budget_s=1.0, fallbacks=[web], hedge_s=0.1
+    )
+    took = time.perf_counter() - t0
+    assert web.calls == 1 and "web" in res.providers_used
+    assert took < 0.6  # sequential would be ~0.7
+
+
+async def test_no_hedge_when_early_results_are_good(quota_for):
+    good = [
+        cand(
+            f"https://a.dev/{i}", "fast", title="unusual query words", snippet="unusual query words"
+        )
+        for i in range(5)
+    ]
+    fast = FakeProvider("fast", good)
+    slow = FakeProvider("slow", [], delay=0.2)
+    web = FakeProvider("web", [cand("https://w.dev/1", "web")])
+    quota = quota_for([fast, slow, web])
+    await gather_candidates(
+        "unusual query words", [fast, slow], quota, budget_s=1.0, fallbacks=[web], hedge_s=0.05
+    )
+    assert web.calls == 0

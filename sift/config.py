@@ -77,7 +77,35 @@ class Settings(BaseSettings):
     # Caches.
     query_cache_ttl: int = 24 * 3600
     query_cache_short_ttl: int = 3600
+    # Fresh-cache TTL per vertical (others use query_cache_ttl): news goes
+    # stale fast, travel guides and papers barely change.
+    vertical_cache_ttl: dict[str, int] = {
+        "news": 3600,
+        "social": 3 * 3600,
+        "travel": 7 * 24 * 3600,
+        "academic": 7 * 24 * 3600,
+    }
+    # The last good response for a query is kept this long and served (marked
+    # stale) when a live search comes back empty, e.g. while engines rate-limit.
+    stale_cache_ttl: int = 7 * 24 * 3600
     url_cache_ttl: int = 24 * 3600
+
+    # SearXNG + vertical tuning.
+    # How long SearXNG waits for its engines before answering with what it has
+    # (its `timeout_limit`); vertical categories include slow ones like Vimeo.
+    searxng_engine_timeout: float = 2.0
+    searxng_category_engine_timeout: float = 1.5
+    # Engine cutoff for shopping's extra "<item> price" query. 1.2 s was
+    # measured: the engines that find store pages often miss it, and price
+    # fields fell from 0.50 to 0.06.
+    shopping_price_query_timeout: float = 2.0
+    # Fetching product/job pages for their JSON-LD (prices, salaries).
+    structured_fetch_budget: float = 1.3
+    # Web search: if the free providers look thin after this long, start the
+    # web backend alongside them instead of after them.
+    fallback_hedge: float = 0.5
+    # Embedding second opinion when the vertical rules say plain web (VerticalKNN).
+    vertical_knn: bool = True
 
     # Auth + rate limit.
     auth: str = "off"  # "off" (anonymous) or "on" (require a Bearer/body key)

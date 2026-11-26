@@ -111,10 +111,10 @@ async def _extract_one(engine: Engine, url: str) -> Page | None:
     except FetchError as e:
         raise RuntimeError(str(e)) from e
     from sift.pipeline.clean import MAX_TEXT_CHARS
-    from sift.pipeline.search import _clean
+    from sift.pipeline.materialize import _clean_html
 
     if res.is_html:
-        cleaned = await _clean(engine.clean_executor, res.body, res.url)
+        cleaned = await _clean_html(engine.clean_executor, res.body, res.url)
         if cleaned is None:
             raise RuntimeError("no extractable content")
         title = cleaned["title"] or url

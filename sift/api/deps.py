@@ -46,6 +46,8 @@ class Engine:
     page_cache: object | None = None
     reranker: object | None = None
     llm: object | None = None
+    # Embedding-based second opinion on vertical detection (VerticalKNN).
+    vertical_knn: object | None = None
     _bg: set = field(default_factory=set)
 
     def schedule_index(self, pages: list[Page]) -> None:

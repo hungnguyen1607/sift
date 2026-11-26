@@ -1,0 +1,60 @@
+{"id": "web-01", "vertical": "web", "query": "how do I reverse a list in python", "must": ["reverse", "list"], "min_results": 3}
+{"id": "web-02", "vertical": "web", "query": "difference between tcp and udp", "must": ["tcp", "udp"], "min_results": 3}
+{"id": "web-03", "vertical": "web", "query": "why is the sky blue", "must": ["scatter"], "min_results": 3}
+{"id": "web-04", "vertical": "web", "query": "what is a mortgage amortization schedule", "must": ["amortization"], "min_results": 3}
+{"id": "web-05", "vertical": "web", "query": "how does photosynthesis work", "must": ["light", "photosynthesis"], "min_results": 3}
+{"id": "news-01", "vertical": "news", "query": "latest openai news", "must": ["openai"], "fields_any": ["published", "publisher"], "min_results": 3}
+{"id": "news-02", "vertical": "news", "query": "what's new with spacex", "must": ["spacex"], "fields_any": ["published", "publisher"], "min_results": 3}
+{"id": "news-03", "vertical": "news", "query": "nvidia news this week", "must": ["nvidia"], "fields_any": ["published", "publisher"], "min_results": 3}
+{"id": "news-04", "vertical": "news", "query": "latest news on the bank of canada interest rate", "must": ["rate"], "fields_any": ["published", "publisher"], "min_results": 3}
+{"id": "news-05", "vertical": "news", "query": "recent headlines about electric vehicles", "must": ["electric"], "fields_any": ["published", "publisher"], "min_results": 3}
+{"id": "videos-01", "vertical": "videos", "query": "python asyncio tutorial video", "must": ["asyncio"], "url_re": "youtube\\.com/watch|vimeo\\.com|dailymotion", "fields_any": ["channel", "duration"], "min_results": 5}
+{"id": "videos-02", "vertical": "videos", "query": "youtube videos about black holes", "must": ["black hole"], "url_re": "youtube\\.com/watch", "fields_any": ["channel", "duration"], "min_results": 5}
+{"id": "videos-03", "vertical": "videos", "query": "guitar lesson videos for beginners", "must": ["guitar"], "url_re": "youtube\\.com/watch|vimeo\\.com|dailymotion", "fields_any": ["channel", "duration"], "min_results": 5}
+{"id": "videos-04", "vertical": "videos", "query": "watch sourdough bread recipe video", "must": ["sourdough"], "url_re": "youtube\\.com/watch|vimeo\\.com|dailymotion", "fields_any": ["channel", "duration"], "min_results": 5}
+{"id": "videos-05", "vertical": "videos", "query": "rust programming talks on youtube", "must": ["rust"], "url_re": "youtube\\.com/watch", "fields_any": ["channel", "duration"], "min_results": 5}
+{"id": "people-01", "vertical": "people", "query": "find 15 Concordia grads at Shopify", "must": ["shopify"], "url_re": "linkedin\\.com/in/", "fields_any": ["company", "school"], "min_results": 10}
+{"id": "people-02", "vertical": "people", "query": "instagram fitness influencers in miami", "must": ["fitness"], "url_re": "instagram\\.com/[^/]+/?$", "fields_any": ["handle", "followers"], "min_results": 5}
+{"id": "people-03", "vertical": "people", "query": "github profiles of rust developers in berlin", "url_re": "github\\.com/[^/]+/?$", "fields_any": ["name", "handle"], "min_results": 5}
+{"id": "people-04", "vertical": "people", "query": "product managers at stripe in toronto on linkedin", "must": ["stripe"], "url_re": "linkedin\\.com/in/", "fields_any": ["company", "location"], "min_results": 5}
+{"id": "people-05", "vertical": "people", "query": "find 10 data scientists who studied at mcgill", "must": ["mcgill"], "url_re": "linkedin\\.com/in/", "fields_any": ["school", "company"], "min_results": 8}
+{"id": "social-01", "vertical": "social", "query": "reddit posts about framework laptop", "must": ["framework"], "url_re": "reddit\\.com/r/", "fields_any": ["platform"], "min_results": 5}
+{"id": "social-02", "vertical": "social", "query": "what are people saying about the pixel 9", "must": ["pixel"], "fields_any": ["platform"], "min_results": 5}
+{"id": "social-03", "vertical": "social", "query": "hacker news discussions about sqlite", "must": ["sqlite"], "url_re": "news\\.ycombinator\\.com", "fields_any": ["platform"], "min_results": 3}
+{"id": "social-04", "vertical": "social", "query": "reddit threads on learning japanese", "must": ["japanese"], "url_re": "reddit\\.com/r/", "fields_any": ["platform"], "min_results": 5}
+{"id": "social-05", "vertical": "social", "query": "mastodon posts about linux", "must": ["linux"], "fields_any": ["platform"], "min_results": 3}
+{"id": "jobs-01", "vertical": "jobs", "query": "remote python jobs", "must": ["python"], "fields_any": ["company", "title"], "min_results": 8}
+{"id": "jobs-02", "vertical": "jobs", "query": "data analyst jobs in vancouver", "must": ["analyst"], "fields_any": ["company", "title", "location"], "min_results": 5}
+{"id": "jobs-03", "vertical": "jobs", "query": "summer internships in software engineering", "must": ["intern"], "fields_any": ["company", "title"], "min_results": 5}
+{"id": "jobs-04", "vertical": "jobs", "query": "devops engineer job openings in berlin", "must": ["devops"], "fields_any": ["company", "title", "location"], "min_results": 5}
+{"id": "jobs-05", "vertical": "jobs", "query": "hiring frontend react developer", "must": ["react"], "fields_any": ["company", "title"], "min_results": 5}
+{"id": "shopping-01", "vertical": "shopping", "query": "mechanical keyboard under $100", "must": ["keyboard"], "fields_any": ["price"], "min_results": 5}
+{"id": "shopping-02", "vertical": "shopping", "query": "buy keychron k2 keyboard", "must": ["keychron"], "fields_any": ["price"], "min_results": 5}
+{"id": "shopping-03", "vertical": "shopping", "query": "cheapest noise cancelling headphones", "must": ["headphone"], "fields_any": ["price"], "min_results": 5}
+{"id": "shopping-04", "vertical": "shopping", "query": "best price for a standing desk", "must": ["desk"], "fields_any": ["price"], "min_results": 5}
+{"id": "shopping-05", "vertical": "shopping", "query": "buy running shoes for women", "must": ["shoe"], "fields_any": ["price"], "min_results": 5}
+{"id": "places-01", "vertical": "places", "query": "cafes near Concordia University", "fields_any": ["address", "lat"], "near": [45.497, -73.579, 5], "min_results": 3}
+{"id": "places-02", "vertical": "places", "query": "thai restaurants in vancouver", "fields_any": ["address", "lat"], "near": [49.28, -123.12, 15], "min_results": 3}
+{"id": "places-03", "vertical": "places", "query": "museums in paris", "fields_any": ["address", "lat"], "near": [48.857, 2.352, 15], "min_results": 3}
+{"id": "places-04", "vertical": "places", "query": "gyms near downtown toronto", "fields_any": ["address", "lat"], "near": [43.65, -79.38, 15], "min_results": 3}
+{"id": "places-05", "vertical": "places", "query": "pharmacies in lisbon", "fields_any": ["address", "lat"], "near": [38.72, -9.14, 15], "min_results": 3}
+{"id": "travel-01", "vertical": "travel", "query": "things to do in Lisbon", "must": ["lisbon"], "min_results": 3}
+{"id": "travel-02", "vertical": "travel", "query": "best time to visit japan", "must": ["japan"], "min_results": 3}
+{"id": "travel-03", "vertical": "travel", "query": "3 day itinerary for rome", "must": ["rome"], "min_results": 3}
+{"id": "travel-04", "vertical": "travel", "query": "travel guide to iceland", "must": ["iceland"], "min_results": 3}
+{"id": "travel-05", "vertical": "travel", "query": "where to stay in barcelona", "must": ["barcelona"], "min_results": 3}
+{"id": "academic-01", "vertical": "academic", "query": "papers about vision transformers", "must": ["transformer"], "min_results": 3}
+{"id": "academic-02", "vertical": "academic", "query": "research on crispr off-target effects", "must": ["crispr"], "min_results": 3}
+{"id": "academic-03", "vertical": "academic", "query": "studies on sleep and memory consolidation", "must": ["sleep", "memory"], "min_results": 3}
+{"id": "academic-04", "vertical": "academic", "query": "arxiv papers on diffusion models", "must": ["diffusion"], "min_results": 3}
+{"id": "academic-05", "vertical": "academic", "query": "peer reviewed research about microplastics in drinking water", "must": ["microplastic"], "min_results": 3}
+{"id": "code-01", "vertical": "code", "query": "httpx retry transport", "must": ["retr"], "min_results": 3, "force": true}
+{"id": "code-02", "vertical": "code", "query": "python typeerror nonetype object is not subscriptable", "must": ["nonetype"], "min_results": 3, "force": true}
+{"id": "code-03", "vertical": "code", "query": "git undo last commit keep changes", "must": ["commit"], "min_results": 3, "force": true}
+{"id": "code-04", "vertical": "code", "query": "docker compose healthcheck postgres", "must": ["healthcheck"], "min_results": 3, "force": true}
+{"id": "code-05", "vertical": "code", "query": "react useeffect cleanup function", "must": ["cleanup"], "min_results": 3, "force": true}
+{"id": "site-01", "vertical": "site", "query": "site:stackoverflow.com asyncio gather exceptions", "must": ["gather"], "url_re": "stackoverflow\\.com", "min_results": 3}
+{"id": "site-02", "vertical": "site", "query": "site:github.com fastapi rate limiter", "must": ["rate"], "url_re": "github\\.com", "min_results": 3}
+{"id": "site-03", "vertical": "site", "query": "site:wikipedia.org great barrier reef", "must": ["reef"], "url_re": "wikipedia\\.org", "min_results": 3}
+{"id": "site-04", "vertical": "site", "query": "site:docs.python.org dataclasses", "must": ["dataclass"], "url_re": "docs\\.python\\.org", "min_results": 3}
+{"id": "site-05", "vertical": "site", "query": "site:developer.mozilla.org fetch api", "must": ["fetch"], "url_re": "developer\\.mozilla\\.org", "min_results": 3}

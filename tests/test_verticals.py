@@ -484,3 +484,205 @@ def test_people_search_uses_singular_roles_and_github_names():
 )
 def test_github_title_forms(url, title, name):
     assert people_fields(Candidate(url, title, "", "s"))["name"] == name
+
+
+def test_degree_and_title_spellings_count_as_the_same_term():
+    v = VERTICALS["people"]
+    terms = key_terms(v, "software engineers with a master from concordia at shopify")
+    hay = "Jane Doe - Software Developer - Shopify. Education: Concordia University, M.Sc."
+    assert coverage(v, terms, hay) == 1.0
+    assert coverage(v, ["phd", "mila"], "Ph.D. student, Mila") == 1.0
+    # A synonym never rescues a past tie.
+    assert coverage(v, ["shopify"], "Developer, Ex-Shopify") == 0.0
+
+
+@pytest.mark.parametrize(
+    "url,title,want",
+    [
+        (
+            "https://job-boards.greenhouse.io/later/jobs/1",
+            "Job Application for Research Analyst at Later",
+            {"title": "Research Analyst", "company": "Later"},
+        ),
+        (
+            "https://job-boards.greenhouse.io/berlinpackaging/jobs/1",
+            "Job Application for Sr. Azure DevOps and SRE Engineer at ...",
+            {"title": "Sr. Azure DevOps and SRE Engineer", "company": "Berlinpackaging"},
+        ),
+        (
+            "https://jobs.lever.co/kabam/abc",
+            "Kabam - Data Analyst - jobs.lever.co",
+            {"title": "Data Analyst", "company": "Kabam"},
+        ),
+        (  # the part before " - " isn't the company: keep the whole title
+            "https://jobs.lever.co/smart-working-solutions/abc",
+            "Senior Python Engineer - Data (Remote)",
+            {
+                "title": "Senior Python Engineer - Data (Remote)",
+                "company": "Smart Working Solutions",
+                "remote": True,
+            },
+        ),
+        (
+            "https://www.linkedin.com/jobs/view/123",
+            "Shopify hiring Backend Developer in Montreal, QC | LinkedIn",
+            {"title": "Backend Developer", "company": "Shopify", "location": "Montreal, QC"},
+        ),
+        (
+            "https://jobs.ashbyhq.com/linear/1",
+            "Product Engineer @ Linear",
+            {"title": "Product Engineer", "company": "Linear"},
+        ),
+    ],
+)
+def test_job_fields_from_result_titles(url, title, want):
+    from sift.pipeline.verticals import job_fields_from_title
+
+    got = job_fields_from_title(Candidate(url, title, "", "searxng"))
+    assert {k: got.get(k) for k in want} == want
+
+
+def test_shop_canonical_merges_product_endpoints():
+    from sift.pipeline.verticals import shop_canonical
+
+    a = shop_canonical("https://www.keychron.com/products/k2.oembed")
+    b = shop_canonical("https://www.keychron.com/products/k2?variant=123")
+    assert a == b == "https://www.keychron.com/products/k2"
+    assert shop_canonical("https://x.com/s?k=desk") == "https://x.com/s?k=desk"
+
+
+def test_shopify_json_product():
+    from sift.pipeline.structured import shopify_fields, shopify_json_url
+
+    assert (
+        shopify_json_url("https://www.keychron.com/en-ca/collections/all/products/k2-v2?variant=1")
+        == "https://www.keychron.com/products/k2-v2.js"
+    )
+    assert shopify_json_url("https://www.amazon.com/dp/B07") is None
+    body = '{"title": "K2", "vendor": "Keychron", "price": 4999, "price_min": 4999, "available": false, "variants": []}'
+    assert shopify_fields(body) == {
+        "name": "K2",
+        "brand": "Keychron",
+        "price": 49.99,
+        "availability": "OutOfStock",
+    }
+    assert shopify_fields('{"not": "shopify"}') == {}
+
+
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        ("Keychron K2 $89.99 free shipping", (89.99, "USD")),
+        ("From $129.00", (129.0, "USD")),
+        ("CA$89.99 in stock", (89.99, "CAD")),
+        ("$79 – $99", (79.0, "USD")),
+        ("£45 at Argos", (45.0, "GBP")),
+        ("Price: 1,299.00 USD", (1299.0, "USD")),
+        ("Was $120 now $99", (99.0, "USD")),
+        ("Save $20 on desks", None),
+        ("free shipping over $35", None),
+        ("$20 off orders", None),
+        ("4.5 stars, 2,345 reviews", None),
+    ],
+)
+def test_snippet_price(text, want):
+    from sift.pipeline.verticals import snippet_price
+
+    assert snippet_price(text) == want
+
+
+def test_shop_fields_skips_pages_that_sell_nothing():
+    from sift.pipeline.verticals import shop_fields
+
+    wiki = Candidate("https://en.wikipedia.org/wiki/Desk", "Desk", "desks cost $200", "x")
+    store = Candidate("https://desks.example/p/1", "Desk", "only $200", "x")
+    assert "price" not in shop_fields(wiki)
+    assert shop_fields(store)["price"] == 200.0
+
+
+def test_price_query():
+    from sift.pipeline.verticals import price_query
+
+    assert price_query("for standing desk") == "standing desk price"
+    assert price_query("keychron k2 prices") == "keychron k2 prices"
+
+
+def test_product_list_reads_item_lists_and_product_arrays():
+    from sift.pipeline.structured import product_list
+
+    item_list = (
+        '<script type="application/ld+json">{"@type": "ItemList", "itemListElement": ['
+        '{"@type": "ListItem", "item": {"@type": "Product", "name": "A", "url": "/p/a",'
+        ' "offers": {"price": "10", "priceCurrency": "USD"}}},'
+        '{"@type": "ListItem", "item": {"@type": "Product", "name": "B", "url": "/p/b",'
+        ' "offers": {"@type": "AggregateOffer", "lowPrice": 7}}}]}</script>'
+    )
+    got = product_list(item_list, "https://s.example/c/x")
+    assert [(p["url"], p["price"]) for p in got] == [
+        ("https://s.example/p/a", 10.0),
+        ("https://s.example/p/b", 7.0),
+    ]
+    array = (
+        '<script type="application/ld+json">[{"@type": "Product", "name": "C",'
+        ' "offers": {"url": "https://s.example/p/c", "price": 5}},'
+        ' {"@type": "Product", "name": "D", "url": "https://s.example/p/d"}]</script>'
+    )
+    assert [p["url"] for p in product_list(array, "https://s.example/")] == [
+        "https://s.example/p/c",
+        "https://s.example/p/d",
+    ]
+    # a listing page has no single product of its own
+    assert product_fields(item_list) == {}
+
+
+def test_shopify_collection_feed():
+    from sift.pipeline.structured import shopify_collection, shopify_collection_url
+
+    assert (
+        shopify_collection_url("https://kb.example/en-ca/collections/keyboards?page=2")
+        == "https://kb.example/collections/keyboards/products.json?limit=8"
+    )
+    assert shopify_collection_url("https://kb.example/products/k2") is None
+    body = json.dumps(
+        {
+            "products": [
+                {
+                    "handle": "k2",
+                    "title": "K2",
+                    "vendor": "Keychron",
+                    "variants": [
+                        {"price": "99.00", "available": False},
+                        {"price": "89.00", "available": True},
+                    ],
+                },
+                {"handle": "no-title"},
+            ]
+        }
+    )
+    assert shopify_collection(body, "https://kb.example/collections/keyboards") == [
+        {
+            "url": "https://kb.example/products/k2",
+            "name": "K2",
+            "brand": "Keychron",
+            "price": 89.0,
+            "availability": "InStock",
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("url", "article"),
+    [
+        ("https://www.pcmag.com/picks/the-best-noise-cancelling-headphones", True),
+        ("https://www.cnet.com/reviews/bose-700-review/", True),
+        ("https://www.btod.com/blog/standing-desk-cost/", True),
+        ("https://www.techradar.com/audio/headphones/best-noise-cancelling-headphones", True),
+        ("https://www.bose.com/p/headphones/qc-ultra", False),
+        ("https://www.bestbuy.com/site/headphones/noise-cancelling/pcmcat15.c", False),
+        ("https://mechanicalkeyboards.com/collections/keyboard-sales", False),
+    ],
+)
+def test_article_like(url, article):
+    from sift.pipeline.verticals import article_like
+
+    assert article_like(url) is article

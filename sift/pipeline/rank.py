@@ -87,12 +87,19 @@ def _shingles(text: str, n: int = 5) -> set[tuple[str, ...]]:
 
 
 def select(
-    ranked: list[Ranked], limit: int, per_site: int = 2, dup_threshold: float = 0.7
+    ranked: list[Ranked],
+    limit: int,
+    per_site: int = 2,
+    dup_threshold: float = 0.7,
+    *,
+    one_per_url: bool = False,
 ) -> list[Ranked]:
     """Walk the ranking best-first, skipping exact repeats, near-duplicates
     (word 5-gram Jaccard ≥ threshold) and sites that already have
-    ``per_site`` results."""
+    ``per_site`` results. ``one_per_url``: at most one passage per page (news
+    wants distinct articles, not two quotes from one)."""
     out: list[Ranked] = []
+    seen_urls: set[str] = set()
     seen_spans: set[tuple[str, int, int]] = set()
     kept_shingles: list[set] = []
     per_site_count: Counter[str] = Counter()
@@ -101,7 +108,7 @@ def select(
             break
         p = r.passage
         span = (normalize_url(p.page.url), p.start, p.end)
-        if span in seen_spans:
+        if span in seen_spans or (one_per_url and span[0] in seen_urls):
             continue
         site = domain_of(p.page.url)
         if per_site_count[site] >= per_site:
@@ -110,6 +117,7 @@ def select(
         if any(len(sh & o) / (len(sh | o) or 1) >= dup_threshold for o in kept_shingles):
             continue
         seen_spans.add(span)
+        seen_urls.add(span[0])
         kept_shingles.append(sh)
         per_site_count[site] += 1
         out.append(r)

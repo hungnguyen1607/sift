@@ -49,7 +49,30 @@ _FAIL_TTL = 3600
 
 
 class FetchError(Exception):
-    pass
+    def __init__(self, msg: str, *, retry_after: int | None = None):
+        super().__init__(msg)
+        self.retry_after = retry_after  # set when the site asked us to slow down
+
+
+# A site that answers 429/503 is left alone for its Retry-After (clamped), not
+# just the one URL: other pages on it would get the same answer.
+_HOST_WAIT = "sift:hostwait:"
+_HOST_WAIT_DEFAULT = 600
+_HOST_WAIT_RANGE = (60, 3600)
+
+
+def _retry_after(value: str | None) -> int:
+    lo, hi = _HOST_WAIT_RANGE
+    if not value:
+        return _HOST_WAIT_DEFAULT
+    value = value.strip()
+    if value.isdigit():
+        return max(lo, min(hi, int(value)))
+    try:
+        delta = parsedate_to_datetime(value).timestamp() - time.time()
+    except (TypeError, ValueError):
+        return _HOST_WAIT_DEFAULT
+    return max(lo, min(hi, int(delta)))
 
 
 @dataclass(slots=True)
@@ -161,16 +184,23 @@ class Fetcher:
     def _fail_key(url: str) -> str:
         return "sift:fetchfail:" + hashlib.sha1(url.encode()).hexdigest()
 
-    async def fetch(self, url: str) -> FetchResult:
+    async def fetch(self, url: str, *, accept: tuple[str, ...] = ()) -> FetchResult:
+        """``accept``: extra content types to allow besides HTML and text
+        (e.g. a store's JSON product endpoint)."""
         if await self._recently_failed(url):
             raise FetchError("failed recently; skipping")
+        host = urlsplit(url).netloc.lower()
+        if await self._host_waiting(host):
+            raise FetchError("site asked us to slow down; waiting")
         try:
-            return await self._fetch(url)
+            return await self._fetch(url, accept)
         except FetchError as e:
             await self._mark_failed(url, str(e))
+            if e.retry_after is not None:  # 429/503: back off the whole site
+                await self._wait_host(host, e.retry_after)
             raise
 
-    async def _fetch(self, url: str) -> FetchResult:
+    async def _fetch(self, url: str, accept: tuple[str, ...] = ()) -> FetchResult:
         deadline = time.monotonic() + self.timeout
         for _ in range(self.max_redirects + 1):
             parts = urlsplit(url)
@@ -197,10 +227,15 @@ class Fetcher:
                             raise FetchError("redirect without location")
                         url = urljoin(url, location)
                         continue
+                    if resp.status_code in (429, 503):
+                        raise FetchError(
+                            f"HTTP {resp.status_code}",
+                            retry_after=_retry_after(resp.headers.get("retry-after")),
+                        )
                     if resp.status_code >= 400:
                         raise FetchError(f"HTTP {resp.status_code}")
                     ctype = resp.headers.get("content-type", "").split(";")[0].strip().lower()
-                    if ctype not in _HTML_TYPES + _TEXT_TYPES:
+                    if ctype not in _HTML_TYPES + _TEXT_TYPES + accept:
                         raise FetchError(f"unsupported content type {ctype or 'unknown'!r}")
                     declared = int(resp.headers.get("content-length") or 0)
                     if declared > self.max_bytes:
@@ -218,6 +253,22 @@ class Fetcher:
             except httpx.HTTPError as e:
                 raise FetchError(f"{type(e).__name__}") from e
         raise FetchError("too many redirects")
+
+    async def _host_waiting(self, host: str) -> bool:
+        if self.redis is None or not host:
+            return False
+        try:
+            return bool(await self.redis.exists(_HOST_WAIT + host))
+        except RedisError:
+            return False
+
+    async def _wait_host(self, host: str, seconds: int) -> None:
+        if self.redis is None or not host:
+            return
+        try:
+            await self.redis.set(_HOST_WAIT + host, "1", ex=seconds)
+        except RedisError:
+            pass
 
     async def _recently_failed(self, url: str) -> bool:
         if self.redis is None:
